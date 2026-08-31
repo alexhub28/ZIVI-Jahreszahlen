@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Diensttage nach Tätigkeitsbereich — camembert</title>
+
+  <!-- D3.js -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <!-- Ton script -->
+  <script src="sketch.js"></script>
+
+  <style>
+    /* Version compacte, dimensionnée pour tenir dans le cadre iframe
+       LivingDocs (max 1000×500px) sans scroll vertical. */
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 6px 14px;
+    }
+
+    h2 {
+      margin: 0;
+      padding: 0;
+      line-height: 1.3;
+      font-weight: normal;
+      font-size: 15px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    #chart {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2 id="titleContainer">
+    <!-- 2025: Diensttage nach Tätigkeitsbereich / 2025 : Jours de service par domaine d'activité / 2025: Giorni di servizio per ambiti d’attività -->
+  </h2>
+
+  <div id="chart"></div>
+
+</body>
+</html>

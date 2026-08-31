@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich</title>
+
+  <!-- D3.js -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <!-- Ton script -->
+  <script src="sketch.js"></script>
+
+  <style>
+    /* Version compacte, dimensionnée pour tenir dans le cadre iframe
+       LivingDocs (max 1000×500px) sans scroll vertical. */
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 6px 14px;
+    }
+
+    h2 {
+      margin: 0 0 6px 0;
+      padding: 0;
+      line-height: 1.3;
+      font-weight: normal;
+      font-size: 15px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    #chart {
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2 id="titleContainer">
+    <!-- Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich / Établissements et places d'affectation par domaine d'activité / Istituti e posti d'impiego per ambito di attività -->
+  </h2>
+
+  <div id="chart"></div>
+
+</body>
+</html>

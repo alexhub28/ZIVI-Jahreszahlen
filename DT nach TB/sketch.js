@@ -82,6 +82,29 @@ function drawBars(g, data, x, y, colorFor) {
     .attr("width", d => x(d.Value));
 }
 
+// --- Mesure la largeur du plus long label de domaine, pour dimensionner
+// la colonne de gauche au plus juste (au lieu d'une marge fixe généreuse).
+// Ajoute un <text> temporaire (hors écran) au même SVG, mesure chaque
+// label avec getComputedTextLength(), puis le retire.
+function measureMaxLabelWidth(svg, data, fontSize) {
+  const probe = svg.append("text")
+    .attr("class", "label-probe")
+    .style("font-family", "Arial")
+    .style("font-size", fontSize)
+    .style("font-weight", "normal")
+    .style("opacity", 0);
+
+  let maxWidth = 0;
+  data.forEach(d => {
+    probe.text(d.Label);
+    const w = probe.node().getComputedTextLength();
+    if (w > maxWidth) maxWidth = w;
+  });
+
+  probe.remove();
+  return maxWidth;
+}
+
 // --- Label (langue courante) à gauche, aligné à gauche (tous les noms
 // commencent à la même position, l'un sous l'autre, comme une légende),
 // centré verticalement sur sa barre — une seule ligne, puisque
@@ -281,11 +304,17 @@ function drawChart() {
 
     const colorFor = buildColorScale(data);
 
+    // Largeur de la colonne de labels calée sur le nom réellement le
+    // plus long (mesuré), plutôt qu'une marge fixe généreuse — pour que
+    // les barres démarrent juste après les labels, sans grand vide.
+    const labelFontSize = isMobile ? "11px" : "12.5px";
+    const maxLabelWidth = measureMaxLabelWidth(svg, data, labelFontSize);
+
     const margin = {
       top: 3,   // écart final entre le titre HTML et le graphique
       right: isMobile ? 42 : 55,   // assez de place pour "100.0 %"
       bottom: 44,
-      left: isMobile ? 160 : 395
+      left: 8 + maxLabelWidth + 16   // 8px avant le label, largeur du label, 16px avant la barre
     };
 
     const innerWidth = width - margin.left - margin.right;

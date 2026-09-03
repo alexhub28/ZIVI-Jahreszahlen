@@ -39,9 +39,9 @@ const ANNOTATIONS = {
 // Légende expliquant le marqueur (point + contour petrol) sur les
 // années annotées ci-dessus.
 const HINT_LOOKUP = {
-  de: "Jahr mit besonderem Ereignis — zum Anzeigen überfahren",
-  fr: "Année avec un événement marquant — survolez pour en savoir plus",
-  it: "Anno con un evento significativo — passa il mouse per saperne di più"
+  de: "Jahr mit einem besonderen Ereignis: zum Anzeigen überfahren",
+  fr: "Année avec un événement particulier : survolez pour en savoir plus",
+  it: "Anno con un evento particolare: passa il mouse per saperne di più"
 };
 
 const DATA_FILE = "BEZ_Zulassungen_2025.csv";

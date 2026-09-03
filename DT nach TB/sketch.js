@@ -82,7 +82,9 @@ function drawBars(g, data, x, y, colorFor) {
     .attr("width", d => x(d.Value));
 }
 
-// --- Étiquette "valeur · %" au bout de chaque barre, avec compteur animé ---
+// --- Étiquette "%" au bout de chaque barre, avec compteur animé ---
+// Le chiffre absolu (Value) n'est plus affiché en permanence — pour ne
+// pas surcharger le graphique, il n'apparaît qu'au survol (tooltip).
 function drawValueLabels(g, data, x, y, isMobile) {
   const valueLabels = g.selectAll("text.value")
     .data(data)
@@ -96,7 +98,7 @@ function drawValueLabels(g, data, x, y, isMobile) {
     .style("font-size", isMobile ? "9.5px" : "10.5px")
     .style("font-weight", "normal")
     .style("fill", "#111")
-    .text("0");
+    .text(formatPercent(0));
 
   valueLabels.transition()
     .delay((d, i) => i * 80)
@@ -104,29 +106,30 @@ function drawValueLabels(g, data, x, y, isMobile) {
     .ease(d3.easeCubicOut)
     .attr("x", d => x(d.Value) + 8)
     .textTween(function (d) {
-      const iVal = d3.interpolateNumber(0, d.Value);
       const iPct = d3.interpolateNumber(0, d.Percent);
-      return t => `${formatSwiss(iVal(t))} · ${formatPercent(Math.round(iPct(t) * 10) / 10)}`;
+      return t => formatPercent(Math.round(iPct(t) * 10) / 10);
     });
 }
 
-// --- Label (langue courante) à gauche, centré verticalement sur sa
-// barre — une seule ligne, puisque data_<lang>.csv ne contient plus
-// qu'une langue à la fois (fini le split(" / ") sur trois lignes).
+// --- Label (langue courante) à l'intérieur du début de la barre,
+// centré verticalement — une seule ligne, puisque data_<lang>.csv ne
+// contient plus qu'une langue à la fois (fini le split(" / ") sur
+// trois lignes). Plus de colonne externe à gauche : le graphique
+// commence presque au bord gauche (cf. margin.left dans drawChart()).
 function drawRowLabels(g, data, y, isMobile) {
   g.selectAll("text.label")
     .data(data)
     .enter()
     .append("text")
     .attr("class", "label")
-    .attr("x", -10)
+    .attr("x", 8)
     .attr("y", d => y(d.Label) + y.bandwidth() / 2)
-    .attr("text-anchor", "end")
+    .attr("text-anchor", "start")
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "11px" : "12.5px")
+    .style("font-size", isMobile ? "9.5px" : "10.5px")
     .style("font-weight", "normal")
-    .style("fill", "#333")
+    .style("fill", "#111")
     .text(d => d.Label);
 }
 
@@ -176,16 +179,57 @@ function highlight(g, label) {
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3);
 
-  // Label survolé : noir plus franc + gras (pas d'agrandissement,
-  // pour ne pas risquer de chevaucher les lignes voisines).
+  // Label survolé : gras (pas d'agrandissement, pour ne pas risquer de
+  // chevaucher les lignes voisines) — déjà en #111 plein dans les deux
+  // états, pour rester lisible sur les 4 couleurs de la palette.
   g.selectAll(".label")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3)
-    .style("font-weight", d => (label !== null && d.Label === label) ? "bold" : "normal")
-    .style("fill", d => (label !== null && d.Label === label) ? "#000" : "#333");
+    .style("font-weight", d => (label !== null && d.Label === label) ? "bold" : "normal");
 }
 
-function attachHoverAreas(g, data, y, margin, innerWidth) {
+const TOOLTIP_PAD_X = 8;
+const TOOLTIP_PAD_Y = 6;
+
+function createTooltip(svg) {
+  const tooltip = svg.append("g")
+    .style("opacity", 0)
+    .style("pointer-events", "none");
+
+  const tooltipRect = tooltip.append("rect")
+    .attr("fill", "white")
+    .attr("stroke", "#5A959D")
+    .attr("stroke-width", 1.5)
+    .attr("rx", 4);
+
+  const tooltipText = tooltip.append("text")
+    .style("font-family", "Arial")
+    .style("font-size", "12px")
+    .style("fill", "#111");
+
+  return { tooltip, tooltipRect, tooltipText };
+}
+
+function positionTooltip(tooltipParts, d, mx, my, chartWidth) {
+  const { tooltip, tooltipRect, tooltipText } = tooltipParts;
+  tooltipText.text(formatSwiss(d.Value));
+
+  const bbox = tooltipText.node().getBBox();
+  const boxWidth = bbox.width + TOOLTIP_PAD_X * 2;
+  const boxHeight = bbox.height + TOOLTIP_PAD_Y * 2;
+
+  let tx = mx + 14;
+  let ty = my - boxHeight - 10;
+  if (tx + boxWidth > chartWidth) tx = mx - boxWidth - 14;
+  if (ty < 0) ty = my + 10;
+
+  tooltip.attr("transform", `translate(${tx}, ${ty})`);
+  tooltipRect.attr("width", boxWidth).attr("height", boxHeight);
+  tooltipText.attr("x", TOOLTIP_PAD_X - bbox.x).attr("y", TOOLTIP_PAD_Y - bbox.y);
+  tooltip.style("opacity", 1);
+}
+
+function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg) {
   g.selectAll("rect.hit")
     .data(data)
     .enter()
@@ -197,8 +241,19 @@ function attachHoverAreas(g, data, y, margin, innerWidth) {
     .attr("height", y.step())
     .attr("fill", "transparent")
     .style("cursor", "pointer")
-    .on("mouseover", (event, d) => highlight(g, d.Label))
-    .on("mouseout", () => highlight(g, null));
+    .on("mouseover", (event, d) => {
+      highlight(g, d.Label);
+      const [mx, my] = d3.pointer(event, svg.node());
+      positionTooltip(tooltipParts, d, mx, my, innerWidth + margin.left + margin.right);
+    })
+    .on("mousemove", (event, d) => {
+      const [mx, my] = d3.pointer(event, svg.node());
+      positionTooltip(tooltipParts, d, mx, my, innerWidth + margin.left + margin.right);
+    })
+    .on("mouseout", () => {
+      highlight(g, null);
+      tooltipParts.tooltip.style("opacity", 0);
+    });
 }
 
 function drawChart() {
@@ -228,9 +283,9 @@ function drawChart() {
 
     const margin = {
       top: 3,   // écart final entre le titre HTML et le graphique
-      right: isMobile ? 78 : 140,   // assez de place pour "952'491 · 50,4 %"
+      right: isMobile ? 42 : 55,   // assez de place pour "100.0 %"
       bottom: 44,
-      left: isMobile ? 160 : 395
+      left: isMobile ? 8 : 12   // labels de domaine désormais dans la barre, plus de colonne externe
     };
 
     const innerWidth = width - margin.left - margin.right;
@@ -253,6 +308,8 @@ function drawChart() {
     drawRowLabels(g, data, y, isMobile);
     drawXAxis(g, x, innerWidth, innerHeight, isMobile);
     drawAxisTitle(svg, margin, innerWidth, height, isMobile);
-    attachHoverAreas(g, data, y, margin, innerWidth);
+
+    const tooltipParts = createTooltip(svg);
+    attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg);
   });
 }

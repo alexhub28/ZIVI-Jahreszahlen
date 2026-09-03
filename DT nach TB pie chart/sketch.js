@@ -28,10 +28,17 @@ const INNER_LABEL_MIN_PERCENT = 5;
 
 // Empaquetage des bulles (d3.pack) : l'aire de chaque bulle est
 // proportionnelle au nombre de jours de service de son domaine.
-const PACK_PADDING = 6;
+const PACK_PADDING = 10;
 
 const TOOLTIP_PAD_X = 10;
 const TOOLTIP_PAD_Y = 8;
+
+// Marge a laquelle les bulles sont alignees a gauche (cf.
+// computeBubbleTransform) : sur un conteneur large, d3.pack() n'etale pas
+// forcement les bulles sur toute la largeur disponible (la hauteur du
+// graphique reste souvent le facteur limitant), ce qui les laissait
+// flotter au milieu d'un grand vide. On les replace nous-memes a gauche.
+const BUBBLES_LEFT_MARGIN = 20;
 
 // Légère oscillation continue des bulles ("respiration"), une fois leur
 // apparition terminée — volontairement modeste pour ne jamais empiéter
@@ -204,6 +211,29 @@ function startBubblePulses(bubble) {
   });
 }
 
+// Boite englobante reelle du nuage de bulles (d3.pack ne garantit pas
+// qu'il occupe toute la zone [width, height] fournie), pour pouvoir
+// ensuite le repositionner nous-memes (aligne a gauche, centre
+// verticalement) plutot que de garder sa position brute.
+function computeBubbleExtent(nodes) {
+  return {
+    minX: d3.min(nodes, d => d.x - d.r),
+    maxX: d3.max(nodes, d => d.x + d.r),
+    minY: d3.min(nodes, d => d.y - d.r),
+    maxY: d3.max(nodes, d => d.y + d.r)
+  };
+}
+
+function computeBubbleGroupTransform(nodes, panelHeight) {
+  const extent = computeBubbleExtent(nodes);
+  const clusterHeight = extent.maxY - extent.minY;
+
+  const tx = BUBBLES_LEFT_MARGIN - extent.minX;
+  const ty = (panelHeight - clusterHeight) / 2 - extent.minY;
+
+  return `translate(${tx}, ${ty})`;
+}
+
 // ============================================================
 // Info-bulle (nom du domaine + chiffre exact, révélés au survol)
 // ============================================================
@@ -330,7 +360,8 @@ function drawChart() {
     const colorFor = buildColorScale(data);
     const nodes = buildPackedNodes(data, containerWidth, panelHeight);
 
-    const g = svg.append("g");
+    const g = svg.append("g")
+      .attr("transform", computeBubbleGroupTransform(nodes, panelHeight));
     const bubble = drawBubbleShapes(g, nodes, colorFor, isMobile);
     startBubblePulses(bubble);
 

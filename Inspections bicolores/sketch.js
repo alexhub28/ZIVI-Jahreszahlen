@@ -1,12 +1,9 @@
-// Couleurs officielles ZIVI. Le petrol est réservé aux jours de service
-// (DT), le jaune/lila au graphique Einsatzbetriebe/Einsatzplätze — pour
-// éviter toute confusion entre variables sans rapport, Inspections utilise
-// ici mint (accent2) / kiwi (accent4), un duo non utilisé ensemble ailleurs.
-// Version BICOLORE : une couleur fixe par série, sans dégradé
-// d'intensité en fonction de la valeur (contrairement à la version
-// principale du dossier parent).
-const BASE_ANN = "#CAE7EA";    // accent2 — mint (Angekündigt)
-const BASE_UNANN = "#B1B488";  // accent4 — kiwi (Unangekündigt)
+// Graphique à 2 variables : petrol (Angekündigt) + lila (Unangekündigt),
+// couleurs unies (pas de dégradé).
+const BASE_ANN = "#5A959D";    // accent1 — petrol (Angekündigt)
+const BASE_UNANN = "#A3A8CA";  // accent3 — lila (Unangekündigt)
+const STROKE_ANN = "#46747A";  // petrol plus soutenu, contour de badge
+const STROKE_UNANN = "#7B81AC"; // lila plus soutenu, contour de badge
 
 const titleLookup = {
   de: "Inspektionen",
@@ -83,7 +80,7 @@ function drawAnnSegment(col, d, i, scales, layout) {
     .attr("y", innerHeight)
     .attr("height", 0)
     .attr("fill", BASE_ANN)
-    .attr("stroke", "#8FB8BC")
+    .attr("stroke", STROKE_ANN)
     .attr("stroke-width", 1);
 
   rectAnn.transition()
@@ -110,7 +107,7 @@ function drawUnannSegment(col, d, i, scales, layout) {
     .attr("y", innerHeight)
     .attr("height", 0)
     .attr("fill", BASE_UNANN)
-    .attr("stroke", "#9A9D74")
+    .attr("stroke", STROKE_UNANN)
     .attr("stroke-width", 1);
 
   rectUnann.transition()
@@ -158,7 +155,7 @@ function drawAnnLabel(col, d, scales, layout, isMobile) {
   // Toujours en blanc : quand le segment est trop petit pour contenir le
   // texte, on ajoute un petit badge petrol derrière pour garder le contraste.
   if (!annInside) {
-    drawLabelBadge(col, formatSwiss(d.ann), annCx, annY, annFontSize, BASE_ANN, "#8FB8BC");
+    drawLabelBadge(col, formatSwiss(d.ann), annCx, annY, annFontSize, BASE_ANN, STROKE_ANN);
   }
 
   col.append("text")

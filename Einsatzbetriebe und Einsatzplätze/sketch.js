@@ -17,20 +17,10 @@ const legendLookup = {
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
 
-// Couleurs officielles ZIVI, cohérentes avec les autres graphiques
-// Einsatzbetriebe / Einsatzplätze (le petrol est réservé au DT).
-// Dégradé d'intensité : plus foncé pour les valeurs élevées. L'amplitude
-// du dégradé s'adapte à l'écart réel des valeurs : ici les années sont
-// très proches les unes des autres, donc le dégradé reste discret plutôt
-// que d'utiliser toute l'étendue clairfoncé comme sur d'autres graphiques.
-const BASE_BETRIEBE = "#FCEB30";  // accent5 — jaune, intensité max
-const BASE_PLAETZE = "#A3A8CA";   // accent3 — lila, intensité max
-
-function lightTintFor(base, minVal, maxVal) {
-  const relRange = (maxVal - minVal) / maxVal;
-  const lightenAmount = Math.max(0.08, Math.min(0.85, relRange * 1.8));
-  return d3.interpolate(base, "#ffffff")(lightenAmount);
-}
+// Graphique à 2 variables : petrol (Einsatzbetriebe) + lila
+// (Einsatzplätze), couleurs unies (pas de dégradé).
+const BASE_BETRIEBE = "#5A959D";  // accent1 — petrol
+const BASE_PLAETZE = "#A3A8CA";   // accent3 — lila
 
 // --- Formatage suisse : 16'852 ---
 function formatSwiss(n) {
@@ -112,7 +102,7 @@ function drawBars(g, data, series, x0, x1, y, innerHeight) {
       .attr("width", x1.bandwidth())
       .attr("y", innerHeight)
       .attr("height", 0)
-      .attr("fill", d => d3.interpolate(s.light, s.base)(s.scale(d[s.key])))
+      .attr("fill", d => s.base)
       .transition()
       .delay((d, i) => i * 70 + si * 35)
       .duration(800)
@@ -237,16 +227,6 @@ function drawChart() {
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
     const maxVal = d3.max(data, d => Math.max(d.betriebe, d.plaetze));
-    const maxBetriebe = d3.max(data, d => d.betriebe);
-    const minBetriebe = d3.min(data, d => d.betriebe);
-    const maxPlaetze = d3.max(data, d => d.plaetze);
-    const minPlaetze = d3.min(data, d => d.plaetze);
-
-    const colorBetriebe = d3.scaleSqrt().domain([minBetriebe, maxBetriebe]).range([0, 1]);
-    const colorPlaetze = d3.scaleSqrt().domain([minPlaetze, maxPlaetze]).range([0, 1]);
-
-    const lightBetriebe = lightTintFor(BASE_BETRIEBE, minBetriebe, maxBetriebe);
-    const lightPlaetze = lightTintFor(BASE_PLAETZE, minPlaetze, maxPlaetze);
 
     const x0 = d3.scaleBand()
       .domain(data.map(d => d.year))
@@ -264,8 +244,8 @@ function drawChart() {
       .range([innerHeight, 0]);
 
     const series = [
-      { key: "betriebe", light: lightBetriebe, base: BASE_BETRIEBE, scale: colorBetriebe },
-      { key: "plaetze", light: lightPlaetze, base: BASE_PLAETZE, scale: colorPlaetze }
+      { key: "betriebe", base: BASE_BETRIEBE },
+      { key: "plaetze", base: BASE_PLAETZE }
     ];
 
     drawBars(g, data, series, x0, x1, y, innerHeight);

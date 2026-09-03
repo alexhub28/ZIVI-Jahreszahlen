@@ -8,21 +8,14 @@ const titleLookup = {
   it: "2025: Giorni di servizio per ambiti d’attività"
 };
 
-// Dégradé Petrol par valeur — identique au principe de la version en
-// barres ("DT nach TB") : une seule teinte (petrol, deja associee aux
-// jours de service ailleurs : ligne Rechtsdienst, DT geleistet), du clair
-// (petit domaine) au fonce (grand domaine), plutot que 8 couleurs
-// disparates. Coherent avec le degrade rouge utilise pour Kurse pro
-// Kursart. Les deux bornes sont des couleurs officielles de la charte
-// (Petrol 100 % et Petrol 20 %).
-const BASE_PETROL = "#5A959D";  // Petrol 100 %
-const LIGHT_PETROL = "#deeaeb"; // Petrol 20 %
+// Plus de 4 domaines : palette fixe à 4 couleurs (petrol, lila, mint,
+// kaki), reprise par cycle dans l'ordre des parts (triées par valeur
+// décroissante) — couleur unie, pas de dégradé.
+const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488"];
 
 function buildColorScale(data) {
-  const minVal = d3.min(data, d => d.Value);
-  const maxVal = d3.max(data, d => d.Value);
-  const scale = d3.scaleSqrt().domain([minVal, maxVal]).range([0, 1]);
-  return d => d3.interpolate(LIGHT_PETROL, BASE_PETROL)(scale(d.Value));
+  const colorByRow = new Map(data.map((d, i) => [d, PALETTE[i % PALETTE.length]]));
+  return d => colorByRow.get(d);
 }
 
 const MOBILE_BREAKPOINT = 600;

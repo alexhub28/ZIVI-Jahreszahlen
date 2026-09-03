@@ -21,15 +21,10 @@ const legendLookup = {
   ]
 };
 
-// Familles de teintes officielles ZIVI : jaune (accent5) pour
-// Einsatzbetriebe, lila (accent3) pour Einsatzplätze. Le petrol est
-// désormais réservé aux jours de service (DT) dans tous les graphiques.
-// Chaque barre est colorée selon un dégradé d'intensité propre à sa
-// série (plus la valeur est élevée, plus la teinte est soutenue).
-const BASE_BETRIEBE = "#FCEB30";  // accent5 — jaune (intensité max)
-const LIGHT_BETRIEBE = "#FDF595"; // jaune (intensité min) — assez soutenu pour rester visible
-const BASE_PLAETZE = "#A3A8CA";   // accent3 — lila (intensité max)
-const LIGHT_PLAETZE = "#D2D4E5";  // lila (intensité min) — assez soutenu pour rester visible
+// Graphique à 2 variables : petrol (Einsatzbetriebe) + lila
+// (Einsatzplätze), couleurs unies (pas de dégradé).
+const BASE_BETRIEBE = "#5A959D";  // accent1 — petrol
+const BASE_PLAETZE = "#A3A8CA";   // accent3 — lila
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
@@ -107,7 +102,7 @@ function drawBars(g, data, series, x, y0, y1, isMobile) {
       .attr("y", d => y0(d.label) + y1(s.key))
       .attr("height", y1.bandwidth())
       .attr("width", 0)
-      .attr("fill", d => d3.interpolate(s.light, s.base)(s.scale(d[s.key])))
+      .attr("fill", d => s.base)
       .transition()
       .delay((d, i) => i * 90 + si * 45)
       .duration(800)
@@ -244,11 +239,6 @@ function drawChart() {
       .domain([0, maxVal * 1.12])
       .range([0, innerWidth]);
 
-    // Échelle de couleur en racine carrée : évite qu'une seule grosse valeur
-    // écrase tout le dégradé (sinon presque toutes les barres seraient pâles).
-    const colorBetriebe = d3.scaleSqrt().domain([0, maxBetriebe]).range([0, 1]);
-    const colorPlaetze = d3.scaleSqrt().domain([0, maxPlaetze]).range([0, 1]);
-
     const y0 = d3.scaleBand()
       .domain(data.map(d => d.label))
       .range([0, innerHeight])
@@ -261,8 +251,8 @@ function drawChart() {
       .paddingInner(0.08);
 
     const series = [
-      { key: "betriebe", light: LIGHT_BETRIEBE, base: BASE_BETRIEBE, scale: colorBetriebe },
-      { key: "plaetze", light: LIGHT_PLAETZE, base: BASE_PLAETZE, scale: colorPlaetze }
+      { key: "betriebe", base: BASE_BETRIEBE },
+      { key: "plaetze", base: BASE_PLAETZE }
     ];
 
     drawBars(g, data, series, x, y0, y1, isMobile);

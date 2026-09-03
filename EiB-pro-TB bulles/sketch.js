@@ -38,25 +38,15 @@ function getURLParams() {
   return Object.fromEntries(params.entries());
 }
 
-// Couleurs officielles ZIVI : jaune (accent5) pour Einsatzbetriebe,
-// lila (accent3) pour Einsatzplätze - même paire que le graphique à
-// barres groupées, pour rester cohérent visuellement entre les deux
-// versions du même jeu de données.
-// Chaque cercle est rempli d'un dégradé radial (LIGHT au centre, BASE
-// au bord) plutôt qu'une teinte plate, pour un effet de bulle/sphère
-// plus vivant. Voir GRADIENT_BETRIEBE_ID / GRADIENT_PLAETZE_ID plus bas.
-const BASE_BETRIEBE = "#FCEB30";   // accent5 - jaune, bord du dégradé
-const LIGHT_BETRIEBE = "#FFFBE0";  // jaune très clair, centre du dégradé
-const BASE_PLAETZE = "#A3A8CA";    // accent3 - lila, bord du dégradé
-const LIGHT_PLAETZE = "#EBECF3";   // lila très clair, centre du dégradé
+// Graphique à 2 variables : petrol (Einsatzbetriebe) + lila
+// (Einsatzplätze), couleurs unies (pas de dégradé) - même paire que le
+// graphique à barres groupées, pour rester cohérent visuellement entre
+// les deux versions du même jeu de données.
+const BASE_BETRIEBE = "#5A959D";   // accent1 - petrol
+const BASE_PLAETZE = "#A3A8CA";    // accent3 - lila
 // STROKE_PLAETZE sert uniquement au contour de l'info-bulle (cf.
-// createTooltip), plus autour des bulles elles-memes : le contour visible
-// sur chaque bulle (fin liseré lila/jaune) ne plaisait pas et a ete retire,
-// le degrade seul dessine desormais le bord de la bulle.
+// createTooltip).
 const STROKE_PLAETZE = "#7B81AC";  // contour, plus soutenu que BASE_PLAETZE
-
-const GRADIENT_BETRIEBE_ID = "gradient-betriebe";
-const GRADIENT_PLAETZE_ID = "gradient-plaetze";
 
 // Un CSV par langue (data_de.csv / data_fr.csv / data_it.csv), chacun
 // deja dans une seule langue - fini le split(" / ") sur le label.
@@ -149,30 +139,6 @@ function pulseLoop(selection, minScale, maxScale, duration, initialDelay) {
   selection.transition().delay(initialDelay).on("end", cycle);
 }
 
-// Dégradés radiaux (centre clair -> bord de la teinte officielle), un
-// par couleur, définis une seule fois et réutilisés par tous les
-// cercles concernés via url(#id). Le décalage du centre (35%/35% au
-// lieu de 50%/50%) simule un léger reflet, pour un rendu plus "bulle".
-function drawGradientDefs(svg) {
-  const defs = svg.append("defs");
-
-  const gradients = [
-    { id: GRADIENT_BETRIEBE_ID, light: LIGHT_BETRIEBE, base: BASE_BETRIEBE },
-    { id: GRADIENT_PLAETZE_ID, light: LIGHT_PLAETZE, base: BASE_PLAETZE }
-  ];
-
-  gradients.forEach(gradient => {
-    const radialGradient = defs.append("radialGradient")
-      .attr("id", gradient.id)
-      .attr("cx", "35%")
-      .attr("cy", "35%")
-      .attr("r", "65%");
-
-    radialGradient.append("stop").attr("offset", "0%").attr("stop-color", gradient.light);
-    radialGradient.append("stop").attr("offset", "100%").attr("stop-color", gradient.base);
-  });
-}
-
 // ============================================================
 // Légende
 // ============================================================
@@ -212,7 +178,7 @@ function drawOuterCircle(pulse) {
   pulse.append("circle")
     .attr("class", "outer")
     .attr("r", 0)
-    .attr("fill", `url(#${GRADIENT_PLAETZE_ID})`)
+    .attr("fill", BASE_PLAETZE)
     .transition()
     .delay((d, i) => i * 90)
     .duration(700)
@@ -225,7 +191,7 @@ function drawInnerCircle(pulse) {
   pulse.append("circle")
     .attr("class", "inner")
     .attr("r", 0)
-    .attr("fill", `url(#${GRADIENT_BETRIEBE_ID})`)
+    .attr("fill", BASE_BETRIEBE)
     .transition()
     .delay((d, i) => i * 90 + 250)
     .duration(500)
@@ -420,7 +386,6 @@ function drawChart() {
       .attr("width", layout.width)
       .attr("height", layout.height);
 
-    drawGradientDefs(svg);
     drawLegend(svg, isMobile);
 
     const g = svg.append("g")

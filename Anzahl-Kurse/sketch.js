@@ -2,10 +2,9 @@
 // Configuration
 // ============================================================
 
-// Rouge officiel ZIVI (accent6), utilise en degrade selon l'intensite
-// de la valeur.
-const BASE_RED = "#FF0000";   // intensite max
-const LIGHT_RED = "#FFD1D1";  // intensite min
+// Petrol officiel ZIVI (accent1), couleur unie (pas de degrade) :
+// graphique a une seule variable.
+const BASE_PETROL = "#5A959D";
 
 const DATA_FILE = "EAZ_Anzahl_Kurse.csv";
 const MOBILE_BREAKPOINT = 600;
@@ -101,8 +100,8 @@ function createScales(data, layout) {
   return { x, y, colorScale };
 }
 
-function getBarColor(value, colorScale) {
-  return d3.interpolate(LIGHT_RED, BASE_RED)(colorScale(value));
+function getBarColor() {
+  return BASE_PETROL;
 }
 
 // ============================================================

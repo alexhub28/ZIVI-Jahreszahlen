@@ -8,11 +8,10 @@ const titleLookup = {
   it: "2025: Corsi per genere del corso"
 };
 
-// Même rouge que le graphique Anzahl Kurse (accent6), en dégradé
-// d'intensité — pour relier visuellement les deux graphiques sur le
-// thème des cours sans tomber dans le tout-rouge plat.
-const BASE_RED = "#FF0000";   // accent6 — intensité max
-const LIGHT_RED = "#ffcccc";  // Rouge Bund 20 % (charte) — intensité min
+// Plus de 4 catégories : palette fixe à 4 couleurs (petrol, lila,
+// mint, kaki), reprise par cycle dans l'ordre des barres (triées par
+// valeur décroissante) — couleur unie, pas de dégradé.
+const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488"];
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
@@ -197,9 +196,6 @@ function drawChart() {
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-    const maxVal = d3.max(data, d => d.value);
-    const minVal = d3.min(data, d => d.value);
-
     const x = d3.scaleLinear()
       .domain([0, maxVal * 1.12])
       .range([0, innerWidth]);
@@ -209,11 +205,7 @@ function drawChart() {
       .range([0, innerHeight])
       .padding(0.3);
 
-    // Échelle de couleur en racine carrée : l'écart (4 à 259, facteur ~65)
-    // reste bien visible sur tout le dégradé plutôt que d'être écrasé
-    // par la seule plus grande valeur.
-    const colorScale = d3.scaleSqrt().domain([minVal, maxVal]).range([0, 1]);
-    const barColor = d => d3.interpolate(LIGHT_RED, BASE_RED)(colorScale(d.value));
+    const barColor = (d, i) => PALETTE[i % PALETTE.length];
 
     drawBars(g, data, x, y, barColor);
     drawValueLabels(g, data, x, y, total, isMobile);

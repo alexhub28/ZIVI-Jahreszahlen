@@ -8,12 +8,10 @@ const titleLookup = {
   it: "2025: Corsi per genere del corso"
 };
 
-// Même rouge que "Kurse pro Kursart" (barres) et "Anzahl Kurse" : pas
-// de couleur fixe par categorie ici (10 types de cours, pas de charte
-// officielle connue pour chacun), mais un degrade d'intensite selon la
-// valeur, coherent avec la version en barres du meme jeu de donnees.
-const BASE_RED = "#FF0000";   // accent6 — intensite max
-const LIGHT_RED = "#ffcccc";  // Rouge Bund 20 % (charte) — intensite min
+// Plus de 4 catégories : palette fixe à 4 couleurs (petrol, lila,
+// mint, kaki), reprise par cycle dans l'ordre des parts (triées par
+// valeur décroissante) — couleur unie, pas de dégradé.
+const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488"];
 
 const MOBILE_BREAKPOINT = 600;
 
@@ -62,13 +60,9 @@ function formatPercent(p) {
 
 // Échelle de couleur en racine carrée (comme la version en barres) :
 // l'écart entre la plus petite et la plus grande valeur reste bien visible
-// sur tout le dégradé plutôt que d'être écrasé par la seule plus grande
-// valeur. Reçoit directement une ligne de donnée ({Value, ...}).
 function buildColorScale(data) {
-  const minVal = d3.min(data, d => d.Value);
-  const maxVal = d3.max(data, d => d.Value);
-  const scale = d3.scaleSqrt().domain([minVal, maxVal]).range([0, 1]);
-  return d => d3.interpolate(LIGHT_RED, BASE_RED)(scale(d.Value));
+  const colorByRow = new Map(data.map((d, i) => [d, PALETTE[i % PALETTE.length]]));
+  return d => colorByRow.get(d);
 }
 
 // ============================================================

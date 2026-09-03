@@ -11,12 +11,11 @@ const titleLookup = {
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
 
-// Couleurs institutionnelles — ici chaque teinte identifie une
-// catégorie de décision (comme pour DT nach DT bereich), et non une
-// intensité de valeur : pas de dégradé, une couleur fixe par série.
-// Le petrol est réservé aux jours de service (Diensttage), comme dans
-// DT geleistet — donc le Total prend le slate dk2 pour ne pas entrer
-// en collision avec la ligne petrol ci-dessous.
+// Max 4 couleurs sur tout le graphique (charte) : petrol réservé à la
+// ligne Diensttage (comme DT geleistet), les 5 séries de barres cyclent
+// sur les 3 couleurs restantes (lila, mint, kaki) — deux paires de
+// séries partagent donc une teinte, distinguées par leur position et
+// leur étiquette.
 const SERIES = [
   {
     key: "Total",
@@ -26,7 +25,7 @@ const SERIES = [
       fr: "Total des décisions disciplinaires",
       it: "Totale decisioni disciplinari"
     },
-    color: "#9f9690" // Grauton 1 (charte) — Total = agrégat, distinct des 4 séries + de la ligne petrol
+    color: "#A3A8CA" // lila
   },
   {
     key: "Art73_74",
@@ -46,7 +45,7 @@ const SERIES = [
       fr: "Décisions disciplinaires pour infraction à l'art. 76 LSC",
       it: "Decisioni disciplinari causa articolo 76 OSCi"
     },
-    color: "#A3A8CA" // lila
+    color: "#B1B488" // kaki
   },
   {
     key: "Strafanzeigen",
@@ -56,7 +55,7 @@ const SERIES = [
       fr: "Plaintes pénales",
       it: "Denuncia penale"
     },
-    color: "#B1B488" // kiwi
+    color: "#A3A8CA" // lila
   },
   {
     key: "Strafbefehle",
@@ -66,7 +65,7 @@ const SERIES = [
       fr: "Ordonnances pénales pour refus de servir",
       it: "Decreti penali causa Omissione del servizi"
     },
-    color: "#FCEB30" // jaune
+    color: "#CAE7EA" // mint
   }
 ];
 

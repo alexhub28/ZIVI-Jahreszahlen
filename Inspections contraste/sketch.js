@@ -2,22 +2,14 @@
 // Configuration
 // ============================================================
 
-// Couleurs officielles ZIVI. Le petrol est reserve aux jours de service
-// (DT), le jaune/lila au graphique Einsatzbetriebe/Einsatzplaetze -
-// Inspections utilise ici mint (accent2) / kiwi (accent4).
-//
-// Degrade leger : l'intensite min reste dans la meme famille de teinte
-// que la base (pas de blanc pur), mais l'ecart est un peu plus marque
-// qu'un simple effleurement, pour que le degrade reste perceptible sans
-// devenir dur. Le contour (une teinte plus soutenue que l'intensite
-// max) donne un peu de definition aux bords de chaque segment.
-const BASE_ANN = "#CAE7EA";     // mint officiel - intensite max (Angekuendigt)
-const LIGHT_ANN = "#DAEEF0";    // mint eclairci - intensite min
-const STROKE_ANN = "#8FB8BC";   // contour, plus soutenu que BASE_ANN
+// Graphique à 2 variables : petrol (Angekündigt) + lila (Unangekündigt),
+// couleurs unies (pas de dégradé) - mêmes teintes que la version
+// "bicolores" du dossier parent.
+const BASE_ANN = "#5A959D";     // accent1 — petrol (Angekuendigt)
+const STROKE_ANN = "#46747A";   // petrol plus soutenu, contour de segment/badge
 
-const BASE_UNANN = "#B1B488";   // kiwi officiel - intensite max (Unangekuendigt)
-const LIGHT_UNANN = "#CCCEB2";  // kiwi eclairci - intensite min
-const STROKE_UNANN = "#9A9D74"; // contour, plus soutenu que BASE_UNANN
+const BASE_UNANN = "#A3A8CA";   // accent3 — lila (Unangekuendigt)
+const STROKE_UNANN = "#7B81AC"; // lila plus soutenu, contour de segment/badge
 
 const DATA_FILE = "ABI_Inspektionen_2025.csv";
 const MOBILE_BREAKPOINT = 600;
@@ -112,23 +104,15 @@ function createScales(data, layout) {
     .domain([0, maxTotal * Y_AXIS_HEADROOM])
     .range([layout.innerHeight, 0]);
 
-  const annIntensity = d3.scaleLinear()
-    .domain([d3.min(data, d => d.ann), d3.max(data, d => d.ann)])
-    .range([0, 1]);
-
-  const unannIntensity = d3.scaleLinear()
-    .domain([d3.min(data, d => d.unann), d3.max(data, d => d.unann)])
-    .range([0, 1]);
-
-  return { x, y, annIntensity, unannIntensity };
+  return { x, y };
 }
 
-function getAnnColor(value, scales) {
-  return d3.interpolate(LIGHT_ANN, BASE_ANN)(scales.annIntensity(value));
+function getAnnColor() {
+  return BASE_ANN;
 }
 
-function getUnannColor(value, scales) {
-  return d3.interpolate(LIGHT_UNANN, BASE_UNANN)(scales.unannIntensity(value));
+function getUnannColor() {
+  return BASE_UNANN;
 }
 
 // ============================================================

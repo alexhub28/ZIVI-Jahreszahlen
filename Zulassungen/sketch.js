@@ -2,11 +2,9 @@
 // Configuration
 // ============================================================
 
-// Bleu ZIVI (hlink officiel), utilise en degrade selon l'intensite de
-// la valeur. Teinte distincte du petrol utilise pour les jours de
-// service (DT), pour eviter toute confusion entre les deux graphiques.
-const BASE_HLINK = "#009DE0";  // intensite max
-const LIGHT_HLINK = "#D1EDF9"; // intensite min
+// Petrol officiel ZIVI (accent1), couleur unie (pas de degrade) :
+// graphique a une seule variable.
+const BASE_PETROL = "#5A959D";
 
 const Y_AXIS_MAX = 7500;
 const Y_AXIS_TICKS = [0, 1500, 3000, 4500, 6000, 7500];
@@ -130,8 +128,8 @@ function createScales(data, layout) {
   return { x, y, colorScale };
 }
 
-function getBarColor(value, colorScale) {
-  return d3.interpolate(LIGHT_HLINK, BASE_HLINK)(colorScale(value));
+function getBarColor() {
+  return BASE_PETROL;
 }
 
 // ============================================================

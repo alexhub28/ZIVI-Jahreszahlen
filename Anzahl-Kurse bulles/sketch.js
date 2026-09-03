@@ -8,11 +8,10 @@ const titleLookup = {
   it: "Numero dei corsi"
 };
 
-// Même rouge officiel ZIVI (accent6) que le bar chart original. Chaque
-// bulle est coloree individuellement selon sa propre valeur (degrade
-// clair -> fonce), pas juste deux couleurs fixes par serie.
-const BASE_RED = "#FF0000";
-const LIGHT_RED = "#FFD1D1";
+// Même petrol officiel ZIVI (accent1) que le bar chart original.
+// Couleur unie pour toutes les bulles (pas de degrade) : graphique
+// a une seule variable.
+const BASE_PETROL = "#5A959D";
 
 const DATA_FILE = "EAZ_Anzahl_Kurse.csv";
 const MOBILE_BREAKPOINT = 600;
@@ -72,29 +71,8 @@ function buildPackedNodes(data, width, height) {
   return root.leaves();
 }
 
-function getFillColor(value, colorScale) {
-  return d3.interpolate(LIGHT_RED, BASE_RED)(colorScale(value));
-}
-
-// Un degrade radial par bulle (centre eclairci -> couleur reelle de la
-// bulle au bord), pour un effet de sphere plutot qu'un aplat plat. Le
-// decalage du centre (35%/35% au lieu de 50%/50%) simule un leger reflet.
-function drawGradientDefs(svg, nodes, colorScale) {
-  const defs = svg.append("defs");
-
-  nodes.forEach(d => {
-    const base = getFillColor(d.data.value, colorScale);
-    const light = d3.interpolate("#ffffff", base)(0.4);
-
-    const gradient = defs.append("radialGradient")
-      .attr("id", `gradient-year-${d.data.year}`)
-      .attr("cx", "35%")
-      .attr("cy", "35%")
-      .attr("r", "65%");
-
-    gradient.append("stop").attr("offset", "0%").attr("stop-color", light);
-    gradient.append("stop").attr("offset", "100%").attr("stop-color", base);
-  });
+function getFillColor() {
+  return BASE_PETROL;
 }
 
 // Fait osciller doucement un groupe entre deux echelles (scale), en
@@ -184,7 +162,7 @@ function drawBubbleShapes(svg, nodes, isMobile) {
 
   pulse.append("circle")
     .attr("r", 0)
-    .attr("fill", d => `url(#gradient-year-${d.data.year})`)
+    .attr("fill", BASE_PETROL)
     .attr("stroke", "#fff")
     .attr("stroke-width", 1.5)
     .transition()
@@ -278,15 +256,6 @@ function drawChart() {
 
     const nodes = buildPackedNodes(data, containerWidth, panelHeight);
 
-    const minVal = d3.min(data, d => d.value);
-    const maxVal = d3.max(data, d => d.value);
-
-    // Degrade cale sur l'ecart reel des valeurs (609–811, comme dans la
-    // version bar chart) plutot que sur [0, max] : sinon la variation de
-    // teinte serait presque invisible, les valeurs etant toutes proches.
-    const colorScale = d3.scaleLinear().domain([minVal, maxVal]).range([0, 1]);
-
-    drawGradientDefs(svg, nodes, colorScale);
     const tooltip = createTooltip(svg);
     drawBubbles(svg, nodes, isMobile, tooltip);
   });

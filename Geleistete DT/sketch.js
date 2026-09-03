@@ -4,9 +4,9 @@ const titleLookup = {
   it: "Giorni di servizio prestati"
 }
 
-// Couleur officielle "jours de service" (DT / Diensttage).
-const COLOR_DT = "#5A959D";  // accent1 — petrol, intensité max
-const LIGHT_DT = "#E1ECED";  // petrol très clair — intensité min
+// Couleur officielle "jours de service" (DT / Diensttage). Couleur
+// unie (pas de degrade) : graphique a une seule variable.
+const COLOR_DT = "#5A959D";  // accent1 — petrol
 
 // ============================================================
 // URL params (remplace p5.getURLParams, non utilise autrement ici)
@@ -205,8 +205,7 @@ function drawChart() {
 
     drawYAxis(g, y, innerWidth, isMobile);
 
-    const colorScale = d3.scaleSqrt().domain([minVal, maxVal]).range([0, 1]);
-    const barColor = d => d3.interpolate(LIGHT_DT, COLOR_DT)(colorScale(d.value));
+    const barColor = () => COLOR_DT;
 
     drawBars(g, data, x, y, innerHeight, barColor);
 

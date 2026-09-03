@@ -82,68 +82,49 @@ function drawBars(g, data, x, y, colorFor) {
     .attr("width", d => x(d.Value));
 }
 
-// --- Label (langue courante), centré verticalement. Entièrement à
-// l'intérieur de la barre s'il y tient (x = 8, sur la couleur) ; sinon
-// entièrement après la barre (x = fin de barre + 8, sur fond blanc) —
-// jamais à cheval sur les deux, ce qui rendait le texte illisible à la
-// jonction couleur/blanc pour les barres courtes à nom long.
-// Doit être dessiné AVANT drawValueLabels : on mesure ici la largeur
-// réelle de chaque label (getComputedTextLength) et on stocke sur la
-// donnée où il se termine (d._labelEnd), pour que le "%" sache où
-// commencer sans jamais chevaucher le nom du domaine.
-function drawRowLabels(g, data, x, y, isMobile) {
+// --- Label (langue courante) à gauche, centré verticalement sur sa
+// barre — une seule ligne, puisque data_<lang>.csv ne contient plus
+// qu'une langue à la fois (fini le split(" / ") sur trois lignes).
+function drawRowLabels(g, data, y, isMobile) {
   g.selectAll("text.label")
     .data(data)
     .enter()
     .append("text")
     .attr("class", "label")
-    .attr("x", 8)
+    .attr("x", -10)
     .attr("y", d => y(d.Label) + y.bandwidth() / 2)
-    .attr("text-anchor", "start")
+    .attr("text-anchor", "end")
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "9.5px" : "10.5px")
+    .style("font-size", isMobile ? "11px" : "12.5px")
     .style("font-weight", "normal")
-    .style("fill", "#111")
-    .text(d => d.Label)
-    .attr("x", function (d) {
-      const barWidth = x(d.Value);
-      const labelWidth = this.getComputedTextLength();
-      const fitsInside = labelWidth + 8 + 6 <= barWidth; // 6px de marge avant la fin de barre
-      const startX = fitsInside ? 8 : barWidth + 8;
-      d._labelEnd = startX + labelWidth;
-      return startX;
-    });
+    .style("fill", "#333")
+    .text(d => d.Label);
 }
 
-// --- Étiquette "%" au bout de chaque barre (ou après le label, si le
-// nom du domaine dépasse la barre — cf. d._labelEnd), avec compteur
-// animé. Le chiffre absolu (Value) n'est plus affiché en permanence —
-// pour ne pas surcharger le graphique, il n'apparaît qu'au survol
-// (tooltip).
+// --- Étiquette "%" au bout de chaque barre, avec compteur animé. Le
+// chiffre absolu (Value) n'est plus affiché en permanence — pour ne
+// pas surcharger le graphique, il n'apparaît qu'au survol (tooltip).
 function drawValueLabels(g, data, x, y, isMobile) {
-  const targetX = d => Math.max(x(d.Value), d._labelEnd) + 8;
-
   const valueLabels = g.selectAll("text.value")
     .data(data)
     .enter()
     .append("text")
     .attr("class", "value")
-    .attr("x", targetX)
+    .attr("x", 8)
     .attr("y", d => y(d.Label) + y.bandwidth() / 2)
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
     .style("font-size", isMobile ? "9.5px" : "10.5px")
     .style("font-weight", "normal")
     .style("fill", "#111")
-    .style("opacity", 0)
     .text(formatPercent(0));
 
   valueLabels.transition()
     .delay((d, i) => i * 80)
     .duration(800)
     .ease(d3.easeCubicOut)
-    .style("opacity", 1)
+    .attr("x", d => x(d.Value) + 8)
     .textTween(function (d) {
       const iPct = d3.interpolateNumber(0, d.Percent);
       return t => formatPercent(Math.round(iPct(t) * 10) / 10);
@@ -196,13 +177,13 @@ function highlight(g, label) {
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3);
 
-  // Label survolé : gras (pas d'agrandissement, pour ne pas risquer de
-  // chevaucher les lignes voisines) — déjà en #111 plein dans les deux
-  // états, pour rester lisible sur les 4 couleurs de la palette.
+  // Label survolé : noir plus franc + gras (pas d'agrandissement,
+  // pour ne pas risquer de chevaucher les lignes voisines).
   g.selectAll(".label")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3)
-    .style("font-weight", d => (label !== null && d.Label === label) ? "bold" : "normal");
+    .style("font-weight", d => (label !== null && d.Label === label) ? "bold" : "normal")
+    .style("fill", d => (label !== null && d.Label === label) ? "#000" : "#333");
 }
 
 const TOOLTIP_PAD_X = 8;
@@ -302,7 +283,7 @@ function drawChart() {
       top: 3,   // écart final entre le titre HTML et le graphique
       right: isMobile ? 42 : 55,   // assez de place pour "100.0 %"
       bottom: 44,
-      left: isMobile ? 8 : 12   // labels de domaine désormais dans la barre, plus de colonne externe
+      left: isMobile ? 160 : 395
     };
 
     const innerWidth = width - margin.left - margin.right;
@@ -321,7 +302,7 @@ function drawChart() {
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
     drawBars(g, data, x, y, colorFor);
-    drawRowLabels(g, data, x, y, isMobile);
+    drawRowLabels(g, data, y, isMobile);
     drawValueLabels(g, data, x, y, isMobile);
     drawXAxis(g, x, innerWidth, innerHeight, isMobile);
     drawAxisTitle(svg, margin, innerWidth, height, isMobile);

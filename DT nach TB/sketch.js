@@ -235,7 +235,11 @@ function createTooltip(svg) {
 
 function positionTooltip(tooltipParts, d, mx, my, chartWidth) {
   const { tooltip, tooltipRect, tooltipText } = tooltipParts;
-  tooltipText.text(formatSwiss(d.Value));
+
+  // Repartir de (0, 0) avant de mesurer : sinon getBBox() renvoie une
+  // boîte qui inclut encore le x/y laissé par le survol précédent, et
+  // le texte dérive hors de l'encadré au fil des survols successifs.
+  tooltipText.attr("x", 0).attr("y", 0).text(formatSwiss(d.Value));
 
   const bbox = tooltipText.node().getBBox();
   const boxWidth = bbox.width + TOOLTIP_PAD_X * 2;

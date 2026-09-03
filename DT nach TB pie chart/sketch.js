@@ -28,7 +28,7 @@ const INNER_LABEL_MIN_PERCENT = 5;
 
 // Empaquetage des bulles (d3.pack) : l'aire de chaque bulle est
 // proportionnelle au nombre de jours de service de son domaine.
-const PACK_PADDING = 10;
+const PACK_PADDING = 14;
 
 const TOOLTIP_PAD_X = 10;
 const TOOLTIP_PAD_Y = 8;
@@ -39,12 +39,6 @@ const TOOLTIP_PAD_Y = 8;
 // graphique reste souvent le facteur limitant), ce qui les laissait
 // flotter au milieu d'un grand vide. On les replace nous-memes a gauche.
 const BUBBLES_LEFT_MARGIN = 20;
-
-// Légère oscillation continue des bulles ("respiration"), une fois leur
-// apparition terminée — volontairement modeste pour ne jamais empiéter
-// sur les bulles voisines malgré l'empaquetage serré.
-const BUBBLE_PULSE_SCALE = 0.025;
-const BUBBLE_PULSE_DURATION = 2000;
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
@@ -92,26 +86,6 @@ function buildPackedNodes(data, width, height) {
   const root = d3.hierarchy({ children: data }).sum(d => d.Value);
   d3.pack().size([width, height]).padding(PACK_PADDING)(root);
   return root.leaves();
-}
-
-// Fait osciller doucement un groupe entre deux echelles (scale), en
-// va-et-vient infini. Le delai initial permet d'attendre la fin de
-// l'animation d'entree de la bulle avant de demarrer la respiration.
-function pulseLoop(selection, minScale, maxScale, duration, initialDelay) {
-  function cycle() {
-    selection
-      .transition()
-      .duration(duration)
-      .ease(d3.easeSinInOut)
-      .attr("transform", `scale(${maxScale})`)
-      .transition()
-      .duration(duration)
-      .ease(d3.easeSinInOut)
-      .attr("transform", `scale(${minScale})`)
-      .on("end", cycle);
-  }
-
-  selection.transition().delay(initialDelay).on("end", cycle);
 }
 
 // ============================================================
@@ -177,9 +151,11 @@ function drawBubbleShapes(g, nodes, colorFor, isMobile) {
     .attr("transform", d => `translate(${d.x}, ${d.y})`)
     .style("cursor", "pointer");
 
-  // Groupe interne, pour appliquer l'oscillation (pulseLoop, plus bas)
-  // par un simple scale centre sur la bulle elle-meme — jamais une
-  // translation, qui risquerait de faire chevaucher les bulles voisines.
+  // Pas d'oscillation continue ("respiration") sur ce graphique : avec
+  // des bulles aussi inegales en taille et deja serrees les unes contre
+  // les autres, la moindre variation periodique de rayon risquait de les
+  // faire se chevaucher transitoirement. Le groupe "pulse" ne sert donc
+  // plus qu'a regrouper le cercle et ses etiquettes.
   const pulse = bubble.append("g").attr("class", "pulse");
 
   pulse.append("circle")
@@ -197,18 +173,6 @@ function drawBubbleShapes(g, nodes, colorFor, isMobile) {
   drawPercentLabels(pulse, isMobile);
 
   return bubble;
-}
-
-function startBubblePulses(bubble) {
-  bubble.each(function (d, i) {
-    pulseLoop(
-      d3.select(this).select("g.pulse"),
-      1 - BUBBLE_PULSE_SCALE,
-      1 + BUBBLE_PULSE_SCALE,
-      BUBBLE_PULSE_DURATION + i * 60,
-      i * 70 + 650
-    );
-  });
 }
 
 // Boite englobante reelle du nuage de bulles (d3.pack ne garantit pas
@@ -363,7 +327,6 @@ function drawChart() {
     const g = svg.append("g")
       .attr("transform", computeBubbleGroupTransform(nodes, panelHeight));
     const bubble = drawBubbleShapes(g, nodes, colorFor, isMobile);
-    startBubblePulses(bubble);
 
     const tooltipParts = createTooltip(svg);
     attachHover(bubble, tooltipParts, svg, containerWidth);

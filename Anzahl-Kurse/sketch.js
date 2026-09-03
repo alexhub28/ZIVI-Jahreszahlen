@@ -148,7 +148,7 @@ function drawValueLabels(g, data, scales, layout, isMobile) {
     .attr("text-anchor", "middle")
     .style("font-family", "Arial")
     .style("font-size", isMobile ? "11.5px" : "13.5px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#111")
     .text("0");
 

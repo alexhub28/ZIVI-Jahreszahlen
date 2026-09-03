@@ -288,7 +288,7 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
       .attr("text-anchor", "middle")
       .style("font-family", "Arial")
       .style("font-size", isMobile ? "10.5px" : "12.5px")
-      .style("font-weight", "bold")
+      .style("font-weight", "normal")
       .style("fill", "#111")
       .style("paint-order", "stroke")
       .style("stroke", "#fff")
@@ -465,7 +465,6 @@ function drawChart() {
       .attr("text-anchor", "middle")
       .style("font-family", "Arial")
       .style("font-size", isMobile ? "11.5px" : "13.5px")
-      .style("font-weight", "bold")
       .style("fill", "#111")
       .text(d => d.year);
 

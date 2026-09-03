@@ -169,7 +169,7 @@ function drawAnnLabel(col, d, scales, layout, isMobile) {
     .attr("text-anchor", "middle")
     .style("font-family", "Arial")
     .style("font-size", annFontSize + "px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#111")
     .style("opacity", 0)
     .text(formatSwiss(d.ann));
@@ -193,7 +193,7 @@ function drawUnannLabel(col, d, scales, layout, isMobile) {
     .attr("text-anchor", "middle")
     .style("font-family", "Arial")
     .style("font-size", isMobile ? "10.5px" : "12.5px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#111")
     .style("opacity", 0)
     .text(formatSwiss(d.unann));
@@ -213,7 +213,7 @@ function drawTotalLabel(col, d, i, scales, layout, isMobile) {
     .attr("text-anchor", "middle")
     .style("font-family", "Arial")
     .style("font-size", isMobile ? "11.5px" : "13.5px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#111")
     .style("opacity", 0)
     .text(formatSwiss(d.total))

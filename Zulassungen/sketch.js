@@ -254,7 +254,7 @@ function createTooltip(svg) {
   const tooltipText = tooltip.append("text")
     .style("font-family", "Arial")
     .style("font-size", "14.5px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#111");
 
   return { tooltip, tooltipRect, tooltipText };

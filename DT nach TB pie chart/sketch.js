@@ -114,7 +114,7 @@ function midAngle(d) {
 function styleLabelText(sel) {
   return sel
     .style("font-family", "Arial")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#000");
 }
 
@@ -289,7 +289,7 @@ function attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile) {
     .attr("class", "hover-name")
     .attr("text-anchor", "middle")
     .style("font-family", "Arial")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("font-size", isMobile ? "12.5px" : "14px")
     .style("fill", "#000")
     .style("opacity", 0);

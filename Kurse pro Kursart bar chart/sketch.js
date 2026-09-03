@@ -83,7 +83,7 @@ function drawValueLabels(g, data, x, y, total, isMobile) {
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
     .style("font-size", isMobile ? "10px" : "12px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#111")
     .text("0");
 

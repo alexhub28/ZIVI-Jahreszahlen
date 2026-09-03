@@ -245,7 +245,7 @@ function drawValueLabels(pulse, isMobile) {
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
     .style("font-size", isMobile ? "10px" : "11.5px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#1a1a3a")
     .style("opacity", 0)
     .text(d => formatSwiss(d.data.plaetze))
@@ -264,7 +264,7 @@ function drawValueLabels(pulse, isMobile) {
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
     .style("font-size", isMobile ? "9px" : "10.5px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#1a1a3a")
     .style("opacity", 0)
     .text(d => formatSwiss(d.data.betriebe))
@@ -344,7 +344,7 @@ function fillTooltipText(tooltipText, node) {
   tooltipText.append("tspan")
     .attr("x", TOOLTIP_PAD_X)
     .attr("dy", 0)
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .text(node.data.label);
 }
 

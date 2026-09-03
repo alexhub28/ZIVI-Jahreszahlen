@@ -135,7 +135,7 @@ function createTooltip(svg) {
     .attr("text-anchor", "middle")
     .style("font-family", "Arial")
     .style("font-size", "13.5px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#111");
 
   const padX = 10, padY = 7;
@@ -200,7 +200,7 @@ function drawBubbleShapes(svg, nodes, isMobile) {
     .attr("text-anchor", "middle")
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#111")
     .style("paint-order", "stroke")
     .style("stroke", "#fff")

@@ -150,7 +150,7 @@ function drawValueLabels(g, data, series, x0, x1, y, innerHeight, isMobile) {
       .attr("text-anchor", valueAnchor[s.key])
       .style("font-family", "Arial")
       .style("font-size", isMobile ? "10.5px" : "12.5px")
-      .style("font-weight", "bold")
+      .style("font-weight", "normal")
       .style("fill", "#111")
       .text("0")
       .transition()

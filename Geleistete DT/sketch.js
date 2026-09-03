@@ -102,7 +102,7 @@ function createTooltip(svg, width) {
   const tooltipText = tooltip.append("text")
     .style("font-family", "Arial")
     .style("font-size", "13.5px")
-    .style("font-weight", "bold")
+    .style("font-weight", "normal")
     .style("fill", "#111");
 
   function showTooltip(event, d) {

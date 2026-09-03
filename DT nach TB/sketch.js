@@ -82,18 +82,20 @@ function drawBars(g, data, x, y, colorFor) {
     .attr("width", d => x(d.Value));
 }
 
-// --- Label (langue courante) à gauche, centré verticalement sur sa
-// barre — une seule ligne, puisque data_<lang>.csv ne contient plus
-// qu'une langue à la fois (fini le split(" / ") sur trois lignes).
-function drawRowLabels(g, data, y, isMobile) {
+// --- Label (langue courante) à gauche, aligné à gauche (tous les noms
+// commencent à la même position, l'un sous l'autre, comme une légende),
+// centré verticalement sur sa barre — une seule ligne, puisque
+// data_<lang>.csv ne contient plus qu'une langue à la fois (fini le
+// split(" / ") sur trois lignes).
+function drawRowLabels(g, data, y, margin, isMobile) {
   g.selectAll("text.label")
     .data(data)
     .enter()
     .append("text")
     .attr("class", "label")
-    .attr("x", -10)
+    .attr("x", -margin.left + 8)
     .attr("y", d => y(d.Label) + y.bandwidth() / 2)
-    .attr("text-anchor", "end")
+    .attr("text-anchor", "start")
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
     .style("font-size", isMobile ? "11px" : "12.5px")
@@ -302,7 +304,7 @@ function drawChart() {
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
     drawBars(g, data, x, y, colorFor);
-    drawRowLabels(g, data, y, isMobile);
+    drawRowLabels(g, data, y, margin, isMobile);
     drawValueLabels(g, data, x, y, isMobile);
     drawXAxis(g, x, innerWidth, innerHeight, isMobile);
     drawAxisTitle(svg, margin, innerWidth, height, isMobile);

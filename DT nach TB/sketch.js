@@ -82,17 +82,16 @@ function drawBars(g, data, x, y, colorFor) {
     .attr("width", d => x(d.Value));
 }
 
-// --- Label (langue courante) à l'intérieur du début de la barre,
-// centré verticalement — une seule ligne, puisque data_<lang>.csv ne
-// contient plus qu'une langue à la fois (fini le split(" / ") sur
-// trois lignes). Plus de colonne externe à gauche : le graphique
-// commence presque au bord gauche (cf. margin.left dans drawChart()).
+// --- Label (langue courante), centré verticalement. Entièrement à
+// l'intérieur de la barre s'il y tient (x = 8, sur la couleur) ; sinon
+// entièrement après la barre (x = fin de barre + 8, sur fond blanc) —
+// jamais à cheval sur les deux, ce qui rendait le texte illisible à la
+// jonction couleur/blanc pour les barres courtes à nom long.
 // Doit être dessiné AVANT drawValueLabels : on mesure ici la largeur
-// réelle de chaque label (getComputedTextLength) et on la stocke sur
-// la donnée (d._labelEnd), pour que le "%" sache où commencer sans
-// jamais chevaucher le nom du domaine — les barres courtes ont souvent
-// un nom bien plus long qu'elles.
-function drawRowLabels(g, data, y, isMobile) {
+// réelle de chaque label (getComputedTextLength) et on stocke sur la
+// donnée où il se termine (d._labelEnd), pour que le "%" sache où
+// commencer sans jamais chevaucher le nom du domaine.
+function drawRowLabels(g, data, x, y, isMobile) {
   g.selectAll("text.label")
     .data(data)
     .enter()
@@ -107,8 +106,13 @@ function drawRowLabels(g, data, y, isMobile) {
     .style("font-weight", "normal")
     .style("fill", "#111")
     .text(d => d.Label)
-    .each(function (d) {
-      d._labelEnd = 8 + this.getComputedTextLength();
+    .attr("x", function (d) {
+      const barWidth = x(d.Value);
+      const labelWidth = this.getComputedTextLength();
+      const fitsInside = labelWidth + 8 + 6 <= barWidth; // 6px de marge avant la fin de barre
+      const startX = fitsInside ? 8 : barWidth + 8;
+      d._labelEnd = startX + labelWidth;
+      return startX;
     });
 }
 
@@ -317,7 +321,7 @@ function drawChart() {
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
     drawBars(g, data, x, y, colorFor);
-    drawRowLabels(g, data, y, isMobile);
+    drawRowLabels(g, data, x, y, isMobile);
     drawValueLabels(g, data, x, y, isMobile);
     drawXAxis(g, x, innerWidth, innerHeight, isMobile);
     drawAxisTitle(svg, margin, innerWidth, height, isMobile);

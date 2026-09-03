@@ -8,6 +8,9 @@ const titleLookup = {
 // unie (pas de degrade) : graphique a une seule variable.
 const COLOR_DT = "#5A959D";  // accent1 — petrol
 
+// Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
+let currentLang = "de";
+
 // ============================================================
 // URL params (remplace p5.getURLParams, non utilise autrement ici)
 // ============================================================
@@ -23,9 +26,9 @@ function getURLParams() {
 
 function init() {
   const params = getURLParams();
-  const title = titleLookup[params.lang];
+  currentLang = params.lang || currentLang;
 
-  d3.select("#titleContainer").text(title);
+  d3.select("#titleContainer").text(titleLookup[currentLang]);
 
   drawChart();
 }

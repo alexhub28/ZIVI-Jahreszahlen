@@ -92,18 +92,12 @@ function buildPackedNodes(data, width, height) {
 // Bulles
 // ============================================================
 
-// Texte des étiquettes : toujours en noir, non gras, avec un léger halo
-// blanc — reste lisible aussi bien sur une bulle colorée que sur le fond
-// blanc (étiquettes des petites bulles, affichées juste en dessous).
+// Texte des étiquettes : toujours en noir, non gras.
 function styleLabelText(sel) {
   return sel
     .style("font-family", "Arial")
     .style("font-weight", "normal")
-    .style("fill", "#111")
-    .style("paint-order", "stroke")
-    .style("stroke", "#fff")
-    .style("stroke-width", "3px")
-    .style("stroke-linejoin", "round");
+    .style("fill", "#111");
 }
 
 // Seul le pourcentage reste affiché en permanence (dans la bulle si elle

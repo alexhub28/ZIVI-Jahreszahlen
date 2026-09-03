@@ -82,40 +82,16 @@ function drawBars(g, data, x, y, colorFor) {
     .attr("width", d => x(d.Value));
 }
 
-// --- Étiquette "%" au bout de chaque barre, avec compteur animé ---
-// Le chiffre absolu (Value) n'est plus affiché en permanence — pour ne
-// pas surcharger le graphique, il n'apparaît qu'au survol (tooltip).
-function drawValueLabels(g, data, x, y, isMobile) {
-  const valueLabels = g.selectAll("text.value")
-    .data(data)
-    .enter()
-    .append("text")
-    .attr("class", "value")
-    .attr("x", 8)
-    .attr("y", d => y(d.Label) + y.bandwidth() / 2)
-    .attr("dominant-baseline", "middle")
-    .style("font-family", "Arial")
-    .style("font-size", isMobile ? "9.5px" : "10.5px")
-    .style("font-weight", "normal")
-    .style("fill", "#111")
-    .text(formatPercent(0));
-
-  valueLabels.transition()
-    .delay((d, i) => i * 80)
-    .duration(800)
-    .ease(d3.easeCubicOut)
-    .attr("x", d => x(d.Value) + 8)
-    .textTween(function (d) {
-      const iPct = d3.interpolateNumber(0, d.Percent);
-      return t => formatPercent(Math.round(iPct(t) * 10) / 10);
-    });
-}
-
 // --- Label (langue courante) à l'intérieur du début de la barre,
 // centré verticalement — une seule ligne, puisque data_<lang>.csv ne
 // contient plus qu'une langue à la fois (fini le split(" / ") sur
 // trois lignes). Plus de colonne externe à gauche : le graphique
 // commence presque au bord gauche (cf. margin.left dans drawChart()).
+// Doit être dessiné AVANT drawValueLabels : on mesure ici la largeur
+// réelle de chaque label (getComputedTextLength) et on la stocke sur
+// la donnée (d._labelEnd), pour que le "%" sache où commencer sans
+// jamais chevaucher le nom du domaine — les barres courtes ont souvent
+// un nom bien plus long qu'elles.
 function drawRowLabels(g, data, y, isMobile) {
   g.selectAll("text.label")
     .data(data)
@@ -130,7 +106,44 @@ function drawRowLabels(g, data, y, isMobile) {
     .style("font-size", isMobile ? "9.5px" : "10.5px")
     .style("font-weight", "normal")
     .style("fill", "#111")
-    .text(d => d.Label);
+    .text(d => d.Label)
+    .each(function (d) {
+      d._labelEnd = 8 + this.getComputedTextLength();
+    });
+}
+
+// --- Étiquette "%" au bout de chaque barre (ou après le label, si le
+// nom du domaine dépasse la barre — cf. d._labelEnd), avec compteur
+// animé. Le chiffre absolu (Value) n'est plus affiché en permanence —
+// pour ne pas surcharger le graphique, il n'apparaît qu'au survol
+// (tooltip).
+function drawValueLabels(g, data, x, y, isMobile) {
+  const targetX = d => Math.max(x(d.Value), d._labelEnd) + 8;
+
+  const valueLabels = g.selectAll("text.value")
+    .data(data)
+    .enter()
+    .append("text")
+    .attr("class", "value")
+    .attr("x", targetX)
+    .attr("y", d => y(d.Label) + y.bandwidth() / 2)
+    .attr("dominant-baseline", "middle")
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "9.5px" : "10.5px")
+    .style("font-weight", "normal")
+    .style("fill", "#111")
+    .style("opacity", 0)
+    .text(formatPercent(0));
+
+  valueLabels.transition()
+    .delay((d, i) => i * 80)
+    .duration(800)
+    .ease(d3.easeCubicOut)
+    .style("opacity", 1)
+    .textTween(function (d) {
+      const iPct = d3.interpolateNumber(0, d.Percent);
+      return t => formatPercent(Math.round(iPct(t) * 10) / 10);
+    });
 }
 
 // --- Axe X ---
@@ -304,8 +317,8 @@ function drawChart() {
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
     drawBars(g, data, x, y, colorFor);
-    drawValueLabels(g, data, x, y, isMobile);
     drawRowLabels(g, data, y, isMobile);
+    drawValueLabels(g, data, x, y, isMobile);
     drawXAxis(g, x, innerWidth, innerHeight, isMobile);
     drawAxisTitle(svg, margin, innerWidth, height, isMobile);
 

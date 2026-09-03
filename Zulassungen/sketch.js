@@ -36,6 +36,14 @@ const ANNOTATIONS = {
   }
 };
 
+// Légende expliquant le marqueur (point + contour petrol) sur les
+// années annotées ci-dessus.
+const HINT_LOOKUP = {
+  de: "Jahr mit besonderem Ereignis — zum Anzeigen überfahren",
+  fr: "Année avec un événement marquant — survolez pour en savoir plus",
+  it: "Anno con un evento significativo — passa il mouse per saperne di più"
+};
+
 const DATA_FILE = "BEZ_Zulassungen_2025.csv";
 const MOBILE_BREAKPOINT = 600;
 
@@ -90,9 +98,11 @@ function formatSwiss(n) {
 // Layout & scales
 // ============================================================
 
+const HINT_HEIGHT = 20;
+
 function computeLayout(containerWidth, isMobile) {
   const margin = {
-    top: 14,
+    top: HINT_HEIGHT + 14,
     right: isMobile ? 10 : 20,
     bottom: 26,
     left: isMobile ? 34 : 46
@@ -167,6 +177,29 @@ function drawYAxis(g, y, isMobile) {
     .style("fill", "#555");
 }
 
+// --- Repère (en haut à gauche, sous le titre) : explique le marqueur
+// posé sur les années annotées (cf. ANNOTATIONS / drawAnnotationMarkers).
+function drawHint(svg, margin, isMobile) {
+  const hint = svg.append("g")
+    .attr("transform", `translate(${margin.left}, 6)`);
+
+  hint.append("text")
+    .attr("x", 0)
+    .attr("y", 10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "12.5px")
+    .style("fill", BASE_PETROL)
+    .text("●");
+
+  hint.append("text")
+    .attr("x", 12)
+    .attr("y", 10)
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "10.5px" : "11.5px")
+    .style("fill", "#555")
+    .text(HINT_LOOKUP[currentLang]);
+}
+
 function drawBars(g, data, scales, layout) {
   const { x, y, colorScale } = scales;
   const { innerHeight } = layout;
@@ -180,9 +213,7 @@ function drawBars(g, data, scales, layout) {
     .attr("width", x.bandwidth())
     .attr("y", innerHeight)
     .attr("height", 0)
-    .attr("fill", d => getBarColor(d.value, colorScale))
-    .attr("stroke", d => ANNOTATIONS[d.year] ? "#0076A8" : "none")
-    .attr("stroke-width", 1);
+    .attr("fill", d => getBarColor(d.value, colorScale));
 
   bars.transition()
     .delay((d, i) => i * 20)
@@ -207,7 +238,7 @@ function drawAnnotationMarkers(g, data, scales) {
     .attr("y", d => y(d.value) - 6)
     .attr("text-anchor", "middle")
     .style("font-size", "12.5px")
-    .style("fill", "#0076A8")
+    .style("fill", BASE_PETROL)
     .style("opacity", 0)
     .text("●")
     .transition()
@@ -245,7 +276,7 @@ function createTooltip(svg) {
 
   const tooltipRect = tooltip.append("rect")
     .attr("fill", "white")
-    .attr("stroke", "#0076A8")
+    .attr("stroke", BASE_PETROL)
     .attr("stroke-width", 1.5)
     .attr("rx", 5);
 
@@ -364,6 +395,8 @@ function drawChart() {
       .append("svg")
       .attr("width", layout.width)
       .attr("height", layout.height);
+
+    drawHint(svg, layout.margin, isMobile);
 
     const g = svg.append("g")
       .attr("transform", `translate(${layout.margin.left}, ${layout.margin.top})`);

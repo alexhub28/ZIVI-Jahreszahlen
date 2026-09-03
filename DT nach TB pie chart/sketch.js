@@ -9,7 +9,7 @@ const titleLookup = {
 };
 
 // Plus de 4 domaines : palette fixe à 4 couleurs (petrol, lila, mint,
-// kaki), reprise par cycle dans l'ordre des parts (triées par valeur
+// kaki), reprise par cycle dans l'ordre des bulles (triées par valeur
 // décroissante) — couleur unie, pas de dégradé.
 const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488"];
 
@@ -20,10 +20,24 @@ function buildColorScale(data) {
 
 const MOBILE_BREAKPOINT = 600;
 
-// En dessous de ce pourcentage, l'etiquette (valeur + %) sort de la part
-// (trop etroite pour l'accueillir) et se retrouve reliee par une ligne de
-// rappel, empilee avec les autres petites parts plutot que superposee.
+// En dessous de ce pourcentage, la bulle est trop petite pour accueillir
+// lisiblement son étiquette : le pourcentage est alors affiché juste en
+// dessous de la bulle plutôt que dedans (même seuil que l'ancien
+// camembert pour ses petites parts).
 const INNER_LABEL_MIN_PERCENT = 5;
+
+// Empaquetage des bulles (d3.pack) : l'aire de chaque bulle est
+// proportionnelle au nombre de jours de service de son domaine.
+const PACK_PADDING = 6;
+
+const TOOLTIP_PAD_X = 10;
+const TOOLTIP_PAD_Y = 8;
+
+// Légère oscillation continue des bulles ("respiration"), une fois leur
+// apparition terminée — volontairement modeste pour ne jamais empiéter
+// sur les bulles voisines malgré l'empaquetage serré.
+const BUBBLE_PULSE_SCALE = 0.025;
+const BUBBLE_PULSE_DURATION = 2000;
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
@@ -64,302 +78,227 @@ function formatPercent(p) {
 }
 
 // ============================================================
-// Légende
+// Empaquetage
 // ============================================================
 
-function drawLegend(svg, data, colorFor, legendWidth, panelHeight, isMobile) {
-  const rowHeight = isMobile ? 30 : 34;
-  const startY = (panelHeight - data.length * rowHeight) / 2;
+function buildPackedNodes(data, width, height) {
+  const root = d3.hierarchy({ children: data }).sum(d => d.Value);
+  d3.pack().size([width, height]).padding(PACK_PADDING)(root);
+  return root.leaves();
+}
 
-  const legend = svg.append("g").attr("transform", `translate(14, ${startY})`);
+// Fait osciller doucement un groupe entre deux echelles (scale), en
+// va-et-vient infini. Le delai initial permet d'attendre la fin de
+// l'animation d'entree de la bulle avant de demarrer la respiration.
+function pulseLoop(selection, minScale, maxScale, duration, initialDelay) {
+  function cycle() {
+    selection
+      .transition()
+      .duration(duration)
+      .ease(d3.easeSinInOut)
+      .attr("transform", `scale(${maxScale})`)
+      .transition()
+      .duration(duration)
+      .ease(d3.easeSinInOut)
+      .attr("transform", `scale(${minScale})`)
+      .on("end", cycle);
+  }
 
-  const rows = legend.selectAll("g.legend-row")
-    .data(data)
-    .enter()
-    .append("g")
-    .attr("class", "legend-row")
-    .attr("transform", (d, i) => `translate(0, ${i * rowHeight})`);
-
-  rows.append("rect")
-    .attr("width", 11)
-    .attr("height", 11)
-    .attr("y", 2)
-    .attr("fill", d => colorFor(d));
-
-  rows.append("text")
-    .attr("x", 18)
-    .attr("y", 11)
-    .style("font-family", "Arial")
-    .style("font-size", isMobile ? "10.5px" : "12px")
-    .style("fill", "#111")
-    .text(d => d.Label);
+  selection.transition().delay(initialDelay).on("end", cycle);
 }
 
 // ============================================================
-// Camembert
+// Bulles
 // ============================================================
 
-function midAngle(d) {
-  return d.startAngle + (d.endAngle - d.startAngle) / 2;
-}
-
-// Texte des valeurs : uniquement en noir, sans contour ni halo.
+// Texte des étiquettes : toujours en noir, non gras, avec un léger halo
+// blanc — reste lisible aussi bien sur une bulle colorée que sur le fond
+// blanc (étiquettes des petites bulles, affichées juste en dessous).
 function styleLabelText(sel) {
   return sel
     .style("font-family", "Arial")
     .style("font-weight", "normal")
-    .style("fill", "#000");
+    .style("fill", "#111")
+    .style("paint-order", "stroke")
+    .style("stroke", "#fff")
+    .style("stroke-width", "3px")
+    .style("stroke-linejoin", "round");
 }
 
-function drawSlices(item, arc, colorFor) {
-  item.append("path")
-    .attr("class", "slice")
+// Seul le pourcentage reste affiché en permanence (dans la bulle si elle
+// est assez grande pour l'accueillir, juste en dessous sinon) — le nom du
+// domaine et le chiffre exact n'apparaissent qu'au survol (info-bulle).
+function drawPercentLabels(bubble, isMobile) {
+  const bigBubbles = bubble.filter(d => d.data.Percent >= INNER_LABEL_MIN_PERCENT);
+  const smallBubbles = bubble.filter(d => d.data.Percent < INNER_LABEL_MIN_PERCENT);
+
+  styleLabelText(
+    bigBubbles.append("text")
+      .attr("class", "percent-label")
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .style("font-size", d => Math.min(isMobile ? 14 : 16, Math.max(9, d.r * 0.4)) + "px")
+      .style("opacity", 0)
+  )
+    .text(d => formatPercent(d.data.Percent))
+    .transition()
+    .delay((d, i) => i * 70 + 350)
+    .duration(300)
+    .style("opacity", 1);
+
+  styleLabelText(
+    smallBubbles.append("text")
+      .attr("class", "percent-label percent-label-outside")
+      .attr("text-anchor", "middle")
+      .attr("y", d => d.r + 12)
+      .style("font-size", isMobile ? "9.5px" : "10.5px")
+      .style("opacity", 0)
+  )
+    .text(d => formatPercent(d.data.Percent))
+    .transition()
+    .delay((d, i) => i * 70 + 350)
+    .duration(300)
+    .style("opacity", 1);
+}
+
+function drawBubbleShapes(g, nodes, colorFor, isMobile) {
+  const bubble = g.selectAll("g.bubble")
+    .data(nodes)
+    .enter()
+    .append("g")
+    .attr("class", "bubble")
+    .attr("transform", d => `translate(${d.x}, ${d.y})`)
+    .style("cursor", "pointer");
+
+  // Groupe interne, pour appliquer l'oscillation (pulseLoop, plus bas)
+  // par un simple scale centre sur la bulle elle-meme — jamais une
+  // translation, qui risquerait de faire chevaucher les bulles voisines.
+  const pulse = bubble.append("g").attr("class", "pulse");
+
+  pulse.append("circle")
+    .attr("class", "bubble-circle")
+    .attr("r", 0)
     .attr("fill", d => colorFor(d.data))
     .attr("stroke", "#fff")
     .attr("stroke-width", 1.5)
-    .style("opacity", 0)
     .transition()
     .delay((d, i) => i * 70)
-    .duration(500)
+    .duration(600)
     .ease(d3.easeCubicOut)
-    .style("opacity", 1)
-    .attrTween("d", function (d) {
-      const iAngle = d3.interpolate({ startAngle: d.startAngle, endAngle: d.startAngle }, d);
-      return t => arc(iAngle(t));
-    });
+    .attr("r", d => d.r);
+
+  drawPercentLabels(pulse, isMobile);
+
+  return bubble;
 }
 
-// --- Grandes parts : valeur + % empiles au centre de la part ---
-function drawInnerLabels(item, innerLabelArc, isMobile) {
-  const bigItems = item.filter(d => d.data.Percent >= INNER_LABEL_MIN_PERCENT);
-
-  const innerLabels = styleLabelText(
-    bigItems.append("text")
-      .attr("class", "inner-label")
-      .attr("transform", d => `translate(${innerLabelArc.centroid(d)})`)
-      .attr("text-anchor", "middle")
-      .style("font-size", isMobile ? "12.5px" : "14.5px")
-      .style("opacity", 0)
-  );
-
-  innerLabels.append("tspan")
-    .attr("x", 0)
-    .attr("dy", "-0.15em")
-    .text(d => formatSwiss(d.data.Value));
-
-  innerLabels.append("tspan")
-    .attr("x", 0)
-    .attr("dy", "1.2em")
-    .style("font-weight", "normal")
-    .style("font-size", isMobile ? "10.5px" : "12px")
-    .text(d => formatPercent(d.data.Percent));
-
-  innerLabels.transition()
-    .delay((d, i) => i * 70 + 400)
-    .duration(300)
-    .style("opacity", 1);
-}
-
-// Decluttage vertical : quand plusieurs petites parts sont angulairement
-// proches (ex. regroupees en haut du camembert), leurs etiquettes
-// exterieures se retrouvent quasi a la meme hauteur et se chevauchent.
-// On calcule d'abord la position "naturelle" (centroid) de chaque
-// etiquette, puis on ecarte par cote (gauche/droite) les etiquettes trop
-// proches, par relaxation iterative, en conservant leur ordre vertical.
-function computeDeclutteredLabelPositions(smallArcs, outerAnchorArc) {
-  const LABEL_MIN_GAP = 16;
-  const labelLayout = smallArcs.map(d => {
-    const side = midAngle(d) < Math.PI ? 1 : -1;
-    return { d, side, y: outerAnchorArc.centroid(d)[1] };
+function startBubblePulses(bubble) {
+  bubble.each(function (d, i) {
+    pulseLoop(
+      d3.select(this).select("g.pulse"),
+      1 - BUBBLE_PULSE_SCALE,
+      1 + BUBBLE_PULSE_SCALE,
+      BUBBLE_PULSE_DURATION + i * 60,
+      i * 70 + 650
+    );
   });
-
-  [1, -1].forEach(side => {
-    const group = labelLayout.filter(p => p.side === side).sort((a, b) => a.y - b.y);
-    for (let iter = 0; iter < 30; iter++) {
-      let moved = false;
-      for (let i = 0; i < group.length - 1; i++) {
-        const gap = group[i + 1].y - group[i].y;
-        if (gap < LABEL_MIN_GAP) {
-          const shift = (LABEL_MIN_GAP - gap) / 2;
-          group[i].y -= shift;
-          group[i + 1].y += shift;
-          moved = true;
-        }
-      }
-      if (!moved) break;
-    }
-  });
-
-  return new Map(labelLayout.map(p => [p.d, p.y]));
 }
 
-function drawLeaderLines(smallItems, arc, outerAnchorArc, labelY, outerRadius) {
-  const leaderLines = smallItems.append("polyline")
-    .attr("class", "leader")
-    .attr("fill", "none")
-    .attr("stroke", "#999")
-    .attr("stroke-width", 1)
+// ============================================================
+// Info-bulle (nom du domaine + chiffre exact, révélés au survol)
+// ============================================================
+
+function createTooltip(svg) {
+  const tooltip = svg.append("g")
     .style("opacity", 0)
-    .attr("points", d => {
-      const edge = arc.centroid(d);
-      const y = labelY.get(d);
-      const elbow = [outerAnchorArc.centroid(d)[0], y];
-      const end = [outerRadius * 1.22 * (midAngle(d) < Math.PI ? 1 : -1), y];
-      return [edge, elbow, end];
-    });
+    .style("pointer-events", "none");
 
-  leaderLines.transition()
-    .delay((d, i) => i * 70 + 400)
-    .duration(300)
-    .style("opacity", 1);
-}
+  const tooltipRect = tooltip.append("rect")
+    .attr("fill", "white")
+    .attr("stroke", "#5A959D")
+    .attr("stroke-width", 1.5)
+    .attr("rx", 5);
 
-// Pastille de couleur juste a cote de chaque etiquette de petite part :
-// pour une part de 0.2% (ex. "Katastrophen"), le secteur lui-meme est trop
-// fin pour laisser voir sa propre couleur de remplissage. La pastille,
-// elle, reste toujours visible et rappelle sans ambiguite quelle couleur
-// (donc quel domaine, via la legende) correspond a cette valeur.
-const SWATCH_SIZE = 9;
-const SWATCH_GAP = 6;
-
-function drawOuterSwatches(smallItems, colorFor, labelY, outerRadius) {
-  const swatches = smallItems.append("rect")
-    .attr("class", "outer-swatch")
-    .attr("width", SWATCH_SIZE)
-    .attr("height", SWATCH_SIZE)
-    .attr("fill", d => colorFor(d.data))
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 1)
-    .style("opacity", 0)
-    .attr("x", d => {
-      const side = midAngle(d) < Math.PI ? 1 : -1;
-      const x = outerRadius * 1.26 * side;
-      return side > 0 ? x : x - SWATCH_SIZE;
-    })
-    .attr("y", d => labelY.get(d) - SWATCH_SIZE * 0.75);
-
-  swatches.transition()
-    .delay((d, i) => i * 70 + 400)
-    .duration(300)
-    .style("opacity", 1);
-}
-
-function drawOuterLabels(smallItems, labelY, outerRadius, isMobile) {
-  const outerLabels = styleLabelText(
-    smallItems.append("text")
-      .attr("class", "outer-label")
-      .attr("text-anchor", d => (midAngle(d) < Math.PI ? "start" : "end"))
-      .attr("transform", d => {
-        const side = midAngle(d) < Math.PI ? 1 : -1;
-        const x = outerRadius * 1.26 * side + side * (SWATCH_SIZE + SWATCH_GAP);
-        return `translate(${x}, ${labelY.get(d)})`;
-      })
-      .style("font-size", isMobile ? "10px" : "11.5px")
-      .style("opacity", 0)
-  );
-
-  outerLabels.text(d => `${formatSwiss(d.data.Value)} ${formatPercent(d.data.Percent)}`);
-
-  outerLabels.transition()
-    .delay((d, i) => i * 70 + 400)
-    .duration(300)
-    .style("opacity", 1);
-}
-
-// Nom du domaine affiche au survol, centre au-dessus du camembert : aide
-// a associer une couleur/part a son domaine sans devoir remonter jusqu'a
-// la legende (utile surtout pour les petites parts serrees en haut).
-// Pour les grandes parts, le nom s'affiche plutot directement sur la part
-// (juste au-dessus de sa valeur), au plus pres de ce qui est survole.
-//
-// --- Survol : entoure toute la part correspondante (secteur + ligne de
-// rappel), quel que soit l'element survole. raise() ramene le groupe au
-// premier plan : sans ca, le cote partage avec la part suivante (dessinee
-// apres, donc par-dessus) se faisait recouvrir par son propre contour
-// blanc et un seul des deux cotes droits du secteur restait visible.
-function attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile) {
-  const nameLabel = svg.append("text")
-    .attr("class", "hover-name")
-    .attr("text-anchor", "middle")
+  const tooltipText = tooltip.append("text")
     .style("font-family", "Arial")
-    .style("font-weight", "normal")
-    .style("font-size", isMobile ? "12.5px" : "14px")
-    .style("fill", "#000")
-    .style("opacity", 0);
+    .style("font-size", "12.5px")
+    .style("fill", "#111");
 
-  item
-    .on("mouseover", function (event, d) {
-      const node = d3.select(this).raise();
-      node.select("path.slice").attr("stroke", "#000").attr("stroke-width", 1.5);
-      node.select("polyline.leader").attr("stroke", "#333").attr("stroke-width", 1.5);
-
-      const isBig = d.data.Percent >= INNER_LABEL_MIN_PERCENT;
-      if (isBig) {
-        // A cote de la part, juste a l'exterieur du cercle (meme point
-        // d'ancrage que le depart des lignes de rappel des petites parts),
-        // avec le texte qui s'eloigne du camembert plutot que de le
-        // recouvrir.
-        const [ox, oy] = outerAnchorArc.centroid(d);
-        const side = midAngle(d) < Math.PI ? 1 : -1;
-        nameLabel
-          .attr("text-anchor", side > 0 ? "start" : "end")
-          .attr("x", cx + ox)
-          .attr("y", Math.max(cy + oy, 20));
-      } else {
-        // Petites parts : position fixe au-dessus du camembert (deja
-        // validee), plus lisible que sur la part elle-meme, trop etroite.
-        nameLabel
-          .attr("text-anchor", "middle")
-          .attr("x", cx)
-          .attr("y", 22);
-      }
-      nameLabel.text(d.data.Label).style("opacity", 1);
-    })
-    .on("mouseout", function () {
-      const node = d3.select(this);
-      node.select("path.slice").attr("stroke", "#fff").attr("stroke-width", 1.5);
-      node.select("polyline.leader").attr("stroke", "#999").attr("stroke-width", 1);
-      nameLabel.style("opacity", 0);
-    });
+  return { tooltip, tooltipRect, tooltipText };
 }
 
-function drawPie(svg, data, colorFor, cx, cy, outerRadius, isMobile) {
-  const g = svg.append("g").attr("transform", `translate(${cx}, ${cy})`);
+// Repart toujours de (0, 0) avant de (re)mesurer la boîte : sinon
+// getBBox() refléterait encore la position laissée par le survol
+// précédent et le texte dériverait hors de l'encadré au fil des survols.
+function fillTooltipText(tooltipText, d) {
+  tooltipText.selectAll("tspan").remove();
+  tooltipText.attr("x", 0).attr("y", 0);
 
-  const pie = d3.pie().value(d => d.Value).sort(null);
-  const arcs = pie(data);
+  tooltipText.append("tspan")
+    .attr("x", TOOLTIP_PAD_X)
+    .attr("dy", 0)
+    .style("font-weight", "normal")
+    .text(d.data.Label);
 
-  const arc = d3.arc().innerRadius(0).outerRadius(outerRadius);
-  const innerLabelArc = d3.arc().innerRadius(outerRadius * 0.66).outerRadius(outerRadius * 0.66);
-  const outerAnchorArc = d3.arc().innerRadius(outerRadius * 1.08).outerRadius(outerRadius * 1.08);
+  tooltipText.append("tspan")
+    .attr("x", TOOLTIP_PAD_X)
+    .attr("dy", "1.35em")
+    .style("font-weight", "normal")
+    .style("fill", "#555")
+    .text(formatSwiss(d.data.Value));
+}
 
-  // Un groupe par part : regroupe le secteur, son etiquette et (le cas
-  // echeant) sa ligne de rappel. Le survol de n'importe lequel de ces
-  // elements met en evidence l'ensemble ("encadre toute la case
-  // correspondante"), ce qui aide aussi sur les toutes petites parts ou le
-  // secteur lui-meme est presque impossible a survoler directement.
-  const item = g.selectAll("g.pie-item")
-    .data(arcs, d => d.data.Key)
-    .enter()
-    .append("g")
-    .attr("class", "pie-item")
-    .style("cursor", "pointer");
+function positionTooltip(tooltipParts, mx, my, chartWidth) {
+  const { tooltip, tooltipRect, tooltipText } = tooltipParts;
+  const bbox = tooltipText.node().getBBox();
+  const boxWidth = bbox.width + TOOLTIP_PAD_X * 2;
+  const boxHeight = bbox.height + TOOLTIP_PAD_Y * 2;
 
-  drawSlices(item, arc, colorFor);
+  let tx = mx + 14;
+  let ty = my - boxHeight - 10;
+  if (tx + boxWidth > chartWidth) tx = mx - boxWidth - 14;
+  if (ty < 0) ty = my + 10;
 
-  drawInnerLabels(item, innerLabelArc, isMobile);
+  tooltip.attr("transform", `translate(${tx}, ${ty})`);
+  tooltipRect.attr("width", boxWidth).attr("height", boxHeight);
+  tooltipText.attr("y", TOOLTIP_PAD_Y - bbox.y);
+  tooltip.style("opacity", 1);
+}
 
-  // --- Petites parts : valeur + % sur une ligne, reliees par un trait ---
-  const smallArcs = arcs.filter(d => d.data.Percent < INNER_LABEL_MIN_PERCENT);
-  const smallItems = item.filter(d => d.data.Percent < INNER_LABEL_MIN_PERCENT);
+function showTooltip(event, d, tooltipParts, svg, chartWidth) {
+  const [mx, my] = d3.pointer(event, svg.node());
+  fillTooltipText(tooltipParts.tooltipText, d);
+  positionTooltip(tooltipParts, mx, my, chartWidth);
+}
 
-  const labelY = computeDeclutteredLabelPositions(smallArcs, outerAnchorArc);
+function hideTooltip(tooltipParts) {
+  tooltipParts.tooltip.style("opacity", 0);
+}
 
-  drawLeaderLines(smallItems, arc, outerAnchorArc, labelY, outerRadius);
-  drawOuterSwatches(smallItems, colorFor, labelY, outerRadius);
-  drawOuterLabels(smallItems, labelY, outerRadius, isMobile);
+// ============================================================
+// Interaction
+// ============================================================
 
-  attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile);
+function highlightBubble(bubble, hoveredNode) {
+  bubble
+    .transition()
+    .duration(150)
+    .style("opacity", d => (hoveredNode === null || d === hoveredNode) ? 1 : 0.3);
+}
+
+function attachHover(bubble, tooltipParts, svg, chartWidth) {
+  bubble
+    .on("mouseover", function (event, d) {
+      highlightBubble(bubble, d);
+      d3.select(this).select("circle.bubble-circle").attr("stroke", "#333").attr("stroke-width", 2);
+      showTooltip(event, d, tooltipParts, svg, chartWidth);
+    })
+    .on("mousemove", (event, d) => showTooltip(event, d, tooltipParts, svg, chartWidth))
+    .on("mouseout", function () {
+      highlightBubble(bubble, null);
+      d3.select(this).select("circle.bubble-circle").attr("stroke", "#fff").attr("stroke-width", 1.5);
+      hideTooltip(tooltipParts);
+    });
 }
 
 // ============================================================
@@ -388,24 +327,14 @@ function drawChart() {
 
     data.sort((a, b) => b.Value - a.Value);
 
-    // Largeur plafonnee sur desktop : en pourcentage seul, un conteneur tres
-    // large laissait un grand vide entre la legende et le camembert, rendant
-    // difficile d'associer une couleur a son domaine.
-    const legendWidth = isMobile
-      ? Math.round(containerWidth * 0.42)
-      : Math.min(280, Math.round(containerWidth * 0.36));
-    const pieAreaWidth = containerWidth - legendWidth;
-
-    // Marge laissee pour les etiquettes + traits de rappel des petites
-    // parts, qui debordent legerement au-dela du cercle lui-meme.
-    const outerRadius = Math.max(
-      40,
-      Math.min(pieAreaWidth, panelHeight) / 2 - (isMobile ? 52 : 64)
-    );
-
     const colorFor = buildColorScale(data);
+    const nodes = buildPackedNodes(data, containerWidth, panelHeight);
 
-    drawLegend(svg, data, colorFor, legendWidth, panelHeight, isMobile);
-    drawPie(svg, data, colorFor, legendWidth + pieAreaWidth / 2, panelHeight / 2, outerRadius, isMobile);
+    const g = svg.append("g");
+    const bubble = drawBubbleShapes(g, nodes, colorFor, isMobile);
+    startBubblePulses(bubble);
+
+    const tooltipParts = createTooltip(svg);
+    attachHover(bubble, tooltipParts, svg, containerWidth);
   });
 }

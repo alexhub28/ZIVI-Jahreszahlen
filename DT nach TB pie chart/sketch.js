@@ -22,9 +22,10 @@ const MOBILE_BREAKPOINT = 600;
 
 // En dessous de ce pourcentage, la bulle est trop petite pour accueillir
 // lisiblement son étiquette : le pourcentage est alors affiché juste en
-// dessous de la bulle plutôt que dedans (même seuil que l'ancien
-// camembert pour ses petites parts).
-const INNER_LABEL_MIN_PERCENT = 5;
+// dessous de la bulle plutôt que dedans. Seuil abaisse a 2 (au lieu de 5,
+// repris au depart de l'ancien camembert) : les bulles a 3.6 % et 2.7 %
+// sont assez grandes pour accueillir leur etiquette a l'interieur.
+const INNER_LABEL_MIN_PERCENT = 2;
 
 // Empaquetage des bulles (d3.pack) : l'aire de chaque bulle est
 // proportionnelle au nombre de jours de service de son domaine.

@@ -52,14 +52,14 @@ const MIN_BAR_WIDTH = 2;
 
 const VALUE_GAP = 6;
 
-// Test demande par Barbara/Alexandra : echelle independante par panneau
-// (chaque cote va de 0 a son propre maximum*1.12) plutot qu'une echelle
-// partagee. Gain : chaque panneau utilise toute sa largeur, donc les
-// variations entre domaines sont plus lisibles cote Einsatzbetriebe
-// (max reel 2029, contre 8344 cote Einsatzplaetze). Cout : les longueurs
-// de barre ne sont plus comparables entre les deux panneaux (2029 et
-// 8344 peuvent alors avoir des barres de longueur similaire).
-const INDEPENDENT_SCALES = true;
+// Echelle independante par panneau (chaque cote va de 0 a son propre
+// maximum*1.12) plutot qu'une echelle partagee : teste, puis ecarte
+// (voir commit precedent) car elle rend les deux panneaux non
+// comparables entre eux (une barre a 2029 et une barre a 8344 peuvent
+// alors avoir une longueur similaire). On revient a l'echelle partagee,
+// qui garde les longueurs de barre directement comparables entre
+// Einsatzbetriebe et Einsatzplaetze malgre le miroir.
+const INDEPENDENT_SCALES = false;
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";

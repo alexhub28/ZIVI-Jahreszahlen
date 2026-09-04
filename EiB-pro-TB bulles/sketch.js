@@ -167,8 +167,13 @@ function drawLegendItem(svg, cx, y, color, label, fontSize) {
 // Barres (miroir) + étiquettes de valeur
 // ============================================================
 
-function drawSideBars(g, data, y0, valueScale, panelWidth, color, key, side, isMobile) {
-  const barWidth = val => val > 0 ? Math.max(valueScale(val), MIN_BAR_WIDTH) : 0;
+// lengthScale convertit une valeur en LONGUEUR de barre (échelle non
+// inversée, [0, panelWidth]) — le même objet est passé pour les deux
+// côtés, pour que les longueurs restent directement comparables. Le
+// panneau gauche part simplement de panelWidth (bord touchant la
+// colonne des noms) et soustrait cette longueur.
+function drawSideBars(g, data, y0, lengthScale, panelWidth, color, key, side, isMobile) {
+  const barWidth = val => val > 0 ? Math.max(lengthScale(val), MIN_BAR_WIDTH) : 0;
   const barX = val => side === "left" ? panelWidth - barWidth(val) : 0;
 
   // Départ de l'animation d'apparition : un rectangle/texte de largeur
@@ -281,7 +286,7 @@ function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg) {
       .append("tspan")
       .attr("x", centerLabelWidth / 2)
       .attr("dy", (line, i) => (i === 0 ? startDy : lineHeight) + "em")
-      .text(line);
+      .text(line => line);
   });
 
   return texts;
@@ -397,7 +402,11 @@ function drawChart() {
     const gCenter = svg.append("g").attr("transform", `translate(${centerX}, ${margin.top})`);
     const gRight = svg.append("g").attr("transform", `translate(${rightX}, ${margin.top})`);
 
-    drawSideBars(gLeft, data, y0, leftScale, panelWidth, BASE_BETRIEBE, "betriebe", "left", isMobile);
+    // drawSideBars reçoit toujours le scale "longueur" (rightScale, non
+    // inversé) des deux côtés : lui seul convertit une valeur en une
+    // vraie longueur de barre. leftScale (inversé) ne sert qu'à
+    // positionner les ticks de l'axe gauche (cf. drawSideAxis).
+    drawSideBars(gLeft, data, y0, rightScale, panelWidth, BASE_BETRIEBE, "betriebe", "left", isMobile);
     drawSideBars(gRight, data, y0, rightScale, panelWidth, BASE_PLAETZE, "plaetze", "right", isMobile);
     drawSideAxis(gLeft, leftScale, panelWidth, innerHeight, isMobile);
     drawSideAxis(gRight, rightScale, panelWidth, innerHeight, isMobile);

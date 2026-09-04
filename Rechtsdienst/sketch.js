@@ -11,11 +11,12 @@ const titleLookup = {
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
 
-// Max 4 couleurs sur tout le graphique (charte) : petrol réservé à la
-// ligne Diensttage (comme DT geleistet), les 5 séries de barres cyclent
-// sur les 3 couleurs restantes (lila, mint, kaki) — deux paires de
-// séries partagent donc une teinte, distinguées par leur position et
-// leur étiquette.
+// Petrol réservé à la ligne Diensttage (comme DT geleistet). Les 5
+// séries de barres ont chacune leur propre teinte, distincte des 4
+// autres et de la ligne rouge : lila, mint, kaki (charte), plus jaune
+// (Limonengelb) et gris (Grauton 2, "réservé aux diagrammes") pour les
+// deux séries qui partageaient auparavant une teinte avec une autre
+// (04.09.2026, sur demande de l'utilisatrice).
 const SERIES = [
   {
     key: "Total",
@@ -55,7 +56,7 @@ const SERIES = [
       fr: "Plaintes pénales",
       it: "Denuncia penale"
     },
-    color: "#A3A8CA" // lila
+    color: "#FCEB30" // jaune (Limonengelb) - anciennement lila (dupliqué avec Total)
   },
   {
     key: "Strafbefehle",
@@ -65,7 +66,7 @@ const SERIES = [
       fr: "Ordonnances pénales pour refus de servir",
       it: "Decreti penali causa Omissione del servizi"
     },
-    color: "#CAE7EA" // mint
+    color: "#B2B4B7" // gris (Grauton 2) - anciennement mint (dupliqué avec Art73_74) ; plus petite colonne
   }
 ];
 

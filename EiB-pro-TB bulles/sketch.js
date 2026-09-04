@@ -52,6 +52,15 @@ const MIN_BAR_WIDTH = 2;
 
 const VALUE_GAP = 6;
 
+// Test demande par Barbara/Alexandra : echelle independante par panneau
+// (chaque cote va de 0 a son propre maximum*1.12) plutot qu'une echelle
+// partagee. Gain : chaque panneau utilise toute sa largeur, donc les
+// variations entre domaines sont plus lisibles cote Einsatzbetriebe
+// (max reel 2029, contre 8344 cote Einsatzplaetze). Cout : les longueurs
+// de barre ne sont plus comparables entre les deux panneaux (2029 et
+// 8344 peuvent alors avoir des barres de longueur similaire).
+const INDEPENDENT_SCALES = true;
+
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
 
@@ -379,11 +388,21 @@ function drawChart() {
     const maxPlaetze = d3.max(data, d => d.plaetze);
     const maxVal = Math.max(maxBetriebe, maxPlaetze) * 1.12;
 
-    // Même échelle des deux côtés (même pixel par unité) : les longueurs
-    // de barre restent directement comparables entre établissements et
-    // places d'affectation, malgré le miroir.
-    const rightScale = d3.scaleLinear().domain([0, maxVal]).range([0, panelWidth]);
-    const leftScale = rightScale.copy().range([panelWidth, 0]);
+    // rightScale/rightLengthScale sert toujours a convertir une valeur
+    // Einsatzplaetze en longueur de barre (panneau droit) et, en mode
+    // partage, aussi les Einsatzbetriebe (panneau gauche).
+    const rightScale = d3.scaleLinear().domain([0, INDEPENDENT_SCALES ? maxPlaetze * 1.12 : maxVal]).range([0, panelWidth]);
+
+    // Echelle "longueur" du panneau gauche : partagee avec la droite
+    // (comparabilite directe) ou independante, plafonnee sur son propre
+    // maximum (lisibilite des ecarts entre domaines cote Einsatzbetriebe).
+    const leftLengthScale = INDEPENDENT_SCALES
+      ? d3.scaleLinear().domain([0, maxBetriebe * 1.12]).range([0, panelWidth])
+      : rightScale;
+
+    // leftScale : version inversee de leftLengthScale, utilisee uniquement
+    // pour positionner les graduations de l'axe gauche (cf. drawSideAxis).
+    const leftScale = leftLengthScale.copy().range([panelWidth, 0]);
 
     const y0 = d3.scaleBand()
       .domain(data.map(d => d.label))
@@ -402,11 +421,11 @@ function drawChart() {
     const gCenter = svg.append("g").attr("transform", `translate(${centerX}, ${margin.top})`);
     const gRight = svg.append("g").attr("transform", `translate(${rightX}, ${margin.top})`);
 
-    // drawSideBars reçoit toujours le scale "longueur" (rightScale, non
-    // inversé) des deux côtés : lui seul convertit une valeur en une
-    // vraie longueur de barre. leftScale (inversé) ne sert qu'à
-    // positionner les ticks de l'axe gauche (cf. drawSideAxis).
-    drawSideBars(gLeft, data, y0, rightScale, panelWidth, BASE_BETRIEBE, "betriebe", "left", isMobile);
+    // drawSideBars reçoit un scale "longueur" (non inversé) de chaque
+    // côté — leftLengthScale et rightScale, identiques en mode partagé,
+    // distincts en mode INDEPENDENT_SCALES. leftScale (inversé) ne sert
+    // qu'à positionner les ticks de l'axe gauche (cf. drawSideAxis).
+    drawSideBars(gLeft, data, y0, leftLengthScale, panelWidth, BASE_BETRIEBE, "betriebe", "left", isMobile);
     drawSideBars(gRight, data, y0, rightScale, panelWidth, BASE_PLAETZE, "plaetze", "right", isMobile);
     drawSideAxis(gLeft, leftScale, panelWidth, innerHeight, isMobile);
     drawSideAxis(gRight, rightScale, panelWidth, innerHeight, isMobile);

@@ -52,7 +52,7 @@ const SOLO_SERIES = [
   {
     key: "Strafanzeigen",
     internKey: "Strafanzeigen_Intern",
-    color: "#5A959D", // petrol
+    color: "#A3A8CA", // lila
     opacity: 1,
     labelLookup: {
       de: "Strafanzeigen",

@@ -90,6 +90,22 @@ const AXIS_LEFT_LABEL_LOOKUP = {
   it: "Decisioni / Denuncia penale / Decreti penali"
 };
 
+const AXIS_RIGHT_LABEL_LOOKUP = {
+  de: "Anzahl Diensttage (Mio)",
+  fr: "Jours de service (Million)",
+  it: "Giorni di servizio (Milione)"
+};
+
+// Ligne des jours de service (axe droit) - reprise du graphique groupe
+// Rechtsdienst d'origine, en Rouge Bund (signal) plutot qu'en petrol,
+// pour rester distincte des couleurs des colonnes.
+const LINE_COLOR = "#FF0000"; // Rouge Bund (signal)
+const LINE_LABEL_LOOKUP = {
+  de: "Anrechenbare Diensttage",
+  fr: "Jours de service pris en compte",
+  it: "Giorni di servizio computabili"
+};
+
 const DATA_FILE = "RD_2025.csv";
 const MOBILE_BREAKPOINT = 600;
 const Y_AXIS_HEADROOM = 1.12;
@@ -115,7 +131,7 @@ function getURLParams() {
 function parseData(raw) {
   return raw
     .map(d => {
-      const row = { year: d["Jahr"] };
+      const row = { year: d["Jahr"], diensttage: +d["Diensttage"] };
       ALL_SERIES.forEach(s => {
         row[s.key] = +d[s.key];
         row[s.internKey] = +d[s.internKey];
@@ -139,7 +155,7 @@ function formatSwiss(n) {
 function computeLayout(containerWidth, isMobile) {
   const margin = {
     top: 20,
-    right: isMobile ? 10 : 20,
+    right: isMobile ? 56 : 78, // place pour l'axe droit (Diensttage) + son titre
     bottom: 40,
     left: isMobile ? 60 : 84
   };
@@ -153,9 +169,9 @@ function computeLayout(containerWidth, isMobile) {
 }
 
 function createScales(data, layout) {
-  // Echelle verticale commune aux 3 colonnes d'une meme annee (et a
-  // toutes les annees) : les hauteurs restent comparables entre la
-  // colonne empilee et les deux colonnes simples. Arrondie a la
+  // Echelle verticale gauche, commune aux 3 colonnes d'une meme annee
+  // (et a toutes les annees) : les hauteurs restent comparables entre
+  // la colonne empilee et les deux colonnes simples. Arrondie a la
   // centaine superieure pour des graduations de grille propres.
   const maxAny = d3.max(data, d => Math.max(d.comboTotal, d.Strafanzeigen, d.Strafbefehle));
   const domainTop = Math.ceil((maxAny * Y_AXIS_HEADROOM) / 100) * 100;
@@ -175,18 +191,30 @@ function createScales(data, layout) {
     .domain([0, domainTop])
     .range([layout.innerHeight, 0]);
 
+  // Echelle verticale droite (Diensttage) - meme construction que le
+  // graphique groupe d'origine : marge basse genereuse (les valeurs ne
+  // varient que peu d'une annee a l'autre) et marge haute plus courte.
+  const minDT = d3.min(data, d => d.diensttage);
+  const maxDT = d3.max(data, d => d.diensttage);
+  const dtRange = Math.max(maxDT - minDT, 1);
+
+  const yRight = d3.scaleLinear()
+    .domain([minDT - dtRange * 0.55, maxDT + dtRange * 0.3])
+    .nice()
+    .range([layout.innerHeight, 0]);
+
   // Empilement de la colonne "combo" uniquement (Art73_74 + Art76) :
   // une couche par categorie, chaque couche porte pour chaque annee un
   // couple [y0, y1] (bornes cumulees), meme index que data.
   const stack = d3.stack().keys(STACK_SERIES.map(s => s.key));
   const stackedSeries = stack(data);
 
-  return { x0, x1, y, stackedSeries, domainTop };
+  return { x0, x1, y, yRight, stackedSeries, domainTop };
 }
 
 // ============================================================
-// Grille & axe gauche (repris du graphique groupe Rechtsdienst, sans
-// l'axe droit / la ligne des jours de service qui n'existent pas ici).
+// Grille & axes (repris du graphique groupe Rechtsdienst : axe gauche
+// pour les colonnes + axe droit pour la ligne des jours de service).
 // ============================================================
 
 function drawGridAndAxis(g, scales, layout, isMobile) {
@@ -220,9 +248,26 @@ function drawGridAndAxis(g, scales, layout, isMobile) {
     .style("fill", "#555");
 }
 
-function drawAxisTitle(g, layout, text, isMobile) {
-  const x = -(layout.margin.left - (isMobile ? 14 : 18));
+function drawRightAxis(g, scales, layout, isMobile) {
+  const { yRight } = scales;
 
+  g.append("g")
+    .attr("transform", `translate(${layout.innerWidth}, 0)`)
+    .call(
+      d3.axisRight(yRight)
+        .ticks(7)
+        .tickSize(0)
+        .tickFormat(d => (d / 1e6).toFixed(2))
+    )
+    .call(axisG => axisG.select(".domain").remove())
+    .selectAll("text")
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "10.5px" : "12.5px")
+    .style("fill", "#555");
+}
+
+// --- Titre d'axe, une seule ligne dans la langue courante, rotation -90° ---
+function drawAxisTitle(g, x, text, layout, isMobile) {
   g.append("text")
     .attr("transform", `translate(${x}, ${layout.innerHeight / 2}) rotate(-90)`)
     .attr("text-anchor", "middle")
@@ -230,6 +275,37 @@ function drawAxisTitle(g, layout, text, isMobile) {
     .style("font-size", isMobile ? "10.5px" : "12.5px")
     .style("fill", "#555")
     .text(text);
+}
+
+// ============================================================
+// Ligne des jours de service (axe droit), tracé progressif - reprise
+// telle quelle du graphique groupe Rechtsdienst d'origine.
+// ============================================================
+
+function drawServiceLine(g, data, scales) {
+  const { x0, yRight } = scales;
+
+  const lineGen = d3.line()
+    .x(d => x0(d.year) + x0.bandwidth() / 2)
+    .y(d => yRight(d.diensttage))
+    .curve(d3.curveMonotoneX);
+
+  const path = g.append("path")
+    .datum(data)
+    .attr("fill", "none")
+    .attr("stroke", LINE_COLOR)
+    .attr("stroke-width", 3)
+    .attr("d", lineGen);
+
+  const totalLength = path.node().getTotalLength();
+  path
+    .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
+    .attr("stroke-dashoffset", totalLength)
+    .transition()
+    .delay(300)
+    .duration(1100)
+    .ease(d3.easeCubicOut)
+    .attr("stroke-dashoffset", 0);
 }
 
 // ============================================================
@@ -250,6 +326,10 @@ function drawLegend() {
       .style("opacity", s.opacity);
     item.append("div").attr("class", "legend-text").text(s.labelLookup[currentLang]);
   });
+
+  const lineItem = legend.append("div").attr("class", "legend-item");
+  lineItem.append("span").attr("class", "legend-line");
+  lineItem.append("div").attr("class", "legend-text").text(LINE_LABEL_LOOKUP[currentLang]);
 }
 
 // ============================================================
@@ -480,8 +560,21 @@ function drawYearLabel(g, d, x0, layout, isMobile) {
 // ============================================================
 
 // Une seule zone de survol par annee, couvrant les 3 colonnes du
-// groupe : isole l'annee entiere (comme le graphique groupe d'origine).
-function attachHoverArea(g, data, x0, layout) {
+// groupe : isole l'annee entiere (comme le graphique groupe d'origine)
+// et fait apparaitre une pastille sur la ligne des jours de service,
+// a la position de l'annee survolee.
+function attachHoverArea(g, data, scales, layout) {
+  const { x0, yRight } = scales;
+
+  const hoverDot = g.append("circle")
+    .attr("class", "hover-dot")
+    .attr("r", 5)
+    .attr("fill", LINE_COLOR)
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.5)
+    .style("opacity", 0)
+    .style("pointer-events", "none");
+
   data.forEach(d => {
     g.append("rect")
       .attr("class", "hit")
@@ -492,12 +585,12 @@ function attachHoverArea(g, data, x0, layout) {
       .attr("height", layout.innerHeight + layout.margin.bottom)
       .attr("fill", "transparent")
       .style("cursor", "pointer")
-      .on("mouseover", () => highlightColumn(g, d.year))
-      .on("mouseout", () => highlightColumn(g, null));
+      .on("mouseover", () => highlightColumn(g, d.year, hoverDot, data, scales))
+      .on("mouseout", () => highlightColumn(g, null, hoverDot, data, scales));
   });
 }
 
-function highlightColumn(g, year) {
+function highlightColumn(g, year, hoverDot, data, scales) {
   g.selectAll(".bar")
     .transition()
     .duration(150)
@@ -530,6 +623,17 @@ function highlightColumn(g, year) {
       const d = d3.select(this).datum();
       return (year !== null && d.year === year) ? 1 : 0;
     });
+
+  if (year === null) {
+    hoverDot.style("opacity", 0);
+  } else {
+    const { x0, yRight } = scales;
+    const d = data.find(dd => dd.year === year);
+    hoverDot
+      .attr("cx", x0(year) + x0.bandwidth() / 2)
+      .attr("cy", yRight(d.diensttage))
+      .style("opacity", 1);
+  }
 }
 
 // ============================================================
@@ -557,10 +661,15 @@ function drawChart() {
       .attr("transform", `translate(${layout.margin.left}, ${layout.margin.top})`);
 
     drawGridAndAxis(g, scales, layout, isMobile);
-    drawAxisTitle(g, layout, AXIS_LEFT_LABEL_LOOKUP[currentLang], isMobile);
+    drawRightAxis(g, scales, layout, isMobile);
+    drawAxisTitle(g, -(layout.margin.left - (isMobile ? 14 : 18)), AXIS_LEFT_LABEL_LOOKUP[currentLang], layout, isMobile);
+    drawAxisTitle(g, layout.innerWidth + (layout.margin.right - (isMobile ? 14 : 18)), AXIS_RIGHT_LABEL_LOOKUP[currentLang], layout, isMobile);
 
+    // Ligne avant barres (ordre verifie et voulu, comme le graphique
+    // groupe d'origine) pour que les colonnes restent au premier plan.
+    drawServiceLine(g, data, scales);
     drawColumns(g, data, scales, layout, isMobile);
-    attachHoverArea(g, data, scales.x0, layout);
+    attachHoverArea(g, data, scales, layout);
 
     drawLegend();
   });

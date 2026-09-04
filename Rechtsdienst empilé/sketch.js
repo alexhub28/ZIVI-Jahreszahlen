@@ -14,15 +14,21 @@ const titleLookup = {
 // mesures a part (pas incluses dans ce total) : chacune garde sa propre
 // colonne simple, a cote de la colonne empilee. Les 3 colonnes d'une
 // meme annee sont groupees cote a cote (comme l'etaient les 5 barres du
-// graphique d'origine), avec la meme echelle verticale pour rester
-// comparables entre elles.
+// graphique d'origine), avec la meme echelle verticale (et le meme
+// systeme de grille/axe) pour rester comparables entre elles.
 //
-// Charte : plus de 2 categories -> Petrol, Lila, Mint, Kaki, une teinte
-// fixe par categorie (4 categories pour les 4 teintes disponibles).
+// Colonne empilee : une seule teinte (petrol, meme principe que le
+// graphique "Inspections contraste") - pleine intensite pour Art. 76,
+// 50% pour Art. 73/74, plutot que deux couleurs distinctes.
+const BASE_COLOR = "#5A959D";   // petrol, teinte unique de la colonne empilee
+const STROKE_COLOR = "#46747A"; // petrol plus soutenu, contour des badges
+
 const STACK_SERIES = [
   {
     key: "Art73_74",
-    color: "#A3A8CA", // lila
+    internKey: "Art73_74_Intern",
+    color: BASE_COLOR,
+    opacity: 0.5,
     labelLookup: {
       de: "Disziplinarentscheide wegen Art. 73 oder 74 ZDG",
       fr: "Décisions disciplinaires pour infraction à l'art. 73 ou 74 LSC",
@@ -31,7 +37,9 @@ const STACK_SERIES = [
   },
   {
     key: "Art76",
-    color: "#B1B488", // kaki
+    internKey: "Art76_Intern",
+    color: BASE_COLOR,
+    opacity: 1,
     labelLookup: {
       de: "Disziplinarentscheide wegen Art. 76 ZDV",
       fr: "Décisions disciplinaires pour infraction à l'art. 76 LSC",
@@ -43,7 +51,9 @@ const STACK_SERIES = [
 const SOLO_SERIES = [
   {
     key: "Strafanzeigen",
+    internKey: "Strafanzeigen_Intern",
     color: "#5A959D", // petrol
+    opacity: 1,
     labelLookup: {
       de: "Strafanzeigen",
       fr: "Plaintes pénales",
@@ -52,7 +62,9 @@ const SOLO_SERIES = [
   },
   {
     key: "Strafbefehle",
+    internKey: "Strafbefehle_Intern",
     color: "#CAE7EA", // mint
+    opacity: 1,
     labelLookup: {
       de: "Strafbefehle wegen Zivildienstverweigerung",
       fr: "Ordonnances pénales pour refus de servir",
@@ -70,10 +82,18 @@ const SERIES_BY_KEY = Object.fromEntries(ALL_SERIES.map(s => [s.key, s]));
 // les deux colonnes simples.
 const GROUPS = ["combo", "Strafanzeigen", "Strafbefehle"];
 
+// Titre de l'axe gauche - memes libelles que le graphique groupe
+// d'origine (memes 3 familles de decisions/plaintes/ordonnances).
+const AXIS_LEFT_LABEL_LOOKUP = {
+  de: "Entscheide / Strafanzeigen / Strafbefehle",
+  fr: "Décisions / Plaintes pénales / Ordonnances pénales",
+  it: "Decisioni / Denuncia penale / Decreti penali"
+};
+
 const DATA_FILE = "RD_2025.csv";
 const MOBILE_BREAKPOINT = 600;
 const Y_AXIS_HEADROOM = 1.12;
-const MIN_INSIDE_LABEL_HEIGHT = 22; // en dessous, l'etiquette de segment sort du segment
+const MIN_INSIDE_LABEL_HEIGHT = 34; // en dessous, l'etiquette (2 lignes) sort du segment
 const SEGMENT_DURATION = 650;
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
@@ -96,8 +116,12 @@ function parseData(raw) {
   return raw
     .map(d => {
       const row = { year: d["Jahr"] };
-      ALL_SERIES.forEach(s => { row[s.key] = +d[s.key]; });
+      ALL_SERIES.forEach(s => {
+        row[s.key] = +d[s.key];
+        row[s.internKey] = +d[s.internKey];
+      });
       row.comboTotal = d3.sum(STACK_SERIES, s => row[s.key]);
+      row.comboIntern = d3.sum(STACK_SERIES, s => row[s.internKey]);
       return row;
     })
     .sort((a, b) => a.year - b.year);
@@ -116,8 +140,8 @@ function computeLayout(containerWidth, isMobile) {
   const margin = {
     top: 20,
     right: isMobile ? 10 : 20,
-    bottom: 24,
-    left: isMobile ? 10 : 20
+    bottom: 40,
+    left: isMobile ? 60 : 84
   };
 
   const innerWidth = containerWidth - margin.left - margin.right;
@@ -131,8 +155,10 @@ function computeLayout(containerWidth, isMobile) {
 function createScales(data, layout) {
   // Echelle verticale commune aux 3 colonnes d'une meme annee (et a
   // toutes les annees) : les hauteurs restent comparables entre la
-  // colonne empilée et les deux colonnes simples.
+  // colonne empilee et les deux colonnes simples. Arrondie a la
+  // centaine superieure pour des graduations de grille propres.
   const maxAny = d3.max(data, d => Math.max(d.comboTotal, d.Strafanzeigen, d.Strafbefehle));
+  const domainTop = Math.ceil((maxAny * Y_AXIS_HEADROOM) / 100) * 100;
 
   const x0 = d3.scaleBand()
     .domain(data.map(d => d.year))
@@ -146,7 +172,7 @@ function createScales(data, layout) {
     .padding(0.16);
 
   const y = d3.scaleLinear()
-    .domain([0, maxAny * Y_AXIS_HEADROOM])
+    .domain([0, domainTop])
     .range([layout.innerHeight, 0]);
 
   // Empilement de la colonne "combo" uniquement (Art73_74 + Art76) :
@@ -155,12 +181,61 @@ function createScales(data, layout) {
   const stack = d3.stack().keys(STACK_SERIES.map(s => s.key));
   const stackedSeries = stack(data);
 
-  return { x0, x1, y, stackedSeries };
+  return { x0, x1, y, stackedSeries, domainTop };
+}
+
+// ============================================================
+// Grille & axe gauche (repris du graphique groupe Rechtsdienst, sans
+// l'axe droit / la ligne des jours de service qui n'existent pas ici).
+// ============================================================
+
+function drawGridAndAxis(g, scales, layout, isMobile) {
+  const { y, domainTop } = scales;
+  const ticks = d3.range(0, domainTop + 1, 100);
+
+  g.append("g")
+    .attr("class", "grid")
+    .selectAll("line")
+    .data(ticks)
+    .enter()
+    .append("line")
+    .attr("x1", 0)
+    .attr("x2", layout.innerWidth)
+    .attr("y1", d => y(d))
+    .attr("y2", d => y(d))
+    .attr("stroke", "#e5e5e5")
+    .attr("stroke-width", 1);
+
+  g.append("g")
+    .call(
+      d3.axisLeft(y)
+        .tickValues(ticks)
+        .tickSize(0)
+        .tickFormat(d => formatSwiss(d))
+    )
+    .call(axisG => axisG.select(".domain").remove())
+    .selectAll("text")
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "10.5px" : "12.5px")
+    .style("fill", "#555");
+}
+
+function drawAxisTitle(g, layout, text, isMobile) {
+  const x = -(layout.margin.left - (isMobile ? 14 : 18));
+
+  g.append("text")
+    .attr("transform", `translate(${x}, ${layout.innerHeight / 2}) rotate(-90)`)
+    .attr("text-anchor", "middle")
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "10.5px" : "12.5px")
+    .style("fill", "#555")
+    .text(text);
 }
 
 // ============================================================
 // Légende (HTML, sous le graphique — mêmes classes que le graphique
-// groupé Rechtsdienst).
+// groupé Rechtsdienst). L'opacite du swatch reprend celle de la barre,
+// pour que la legende montre bien les deux intensites de petrol.
 // ============================================================
 
 function drawLegend() {
@@ -169,7 +244,10 @@ function drawLegend() {
   LEGEND_ORDER.forEach(key => {
     const s = SERIES_BY_KEY[key];
     const item = legend.append("div").attr("class", "legend-item");
-    item.append("span").attr("class", "legend-swatch").style("background", s.color);
+    item.append("span")
+      .attr("class", "legend-swatch")
+      .style("background", s.color)
+      .style("opacity", s.opacity);
     item.append("div").attr("class", "legend-text").text(s.labelLookup[currentLang]);
   });
 }
@@ -210,6 +288,7 @@ function drawComboSegments(g, data, scales, layout) {
       .attr("y", layout.innerHeight)
       .attr("height", 0)
       .attr("fill", s.color)
+      .attr("fill-opacity", s.opacity)
       .transition()
       .delay((d, i) => i * 90 + si * 60)
       .duration(SEGMENT_DURATION)
@@ -234,6 +313,7 @@ function drawSoloBars(g, data, scales, layout, isMobile, s) {
     .attr("y", layout.innerHeight)
     .attr("height", 0)
     .attr("fill", s.color)
+    .attr("fill-opacity", s.opacity)
     .transition()
     .delay((d, i) => i * 90)
     .duration(SEGMENT_DURATION)
@@ -242,31 +322,80 @@ function drawSoloBars(g, data, scales, layout, isMobile, s) {
     .attr("height", d => layout.innerHeight - y(d[s.key]));
 
   // Valeur toujours visible au-dessus de la barre (colonne a une seule
-  // valeur, pas de detail a reveler au survol).
+  // valeur, pas de detail a reveler au survol) : principale + valeur
+  // interne entre parentheses, comme dans le graphique groupe d'origine.
   data.forEach((d, i) => {
-    g.append("text")
-      .attr("class", "value total")
-      .datum(d)
-      .attr("x", x0(d.year) + groupX + x1.bandwidth() / 2)
-      .attr("y", y(d[s.key]) - 8)
-      .attr("text-anchor", "middle")
-      .style("font-family", "Arial")
-      .style("font-size", isMobile ? "11px" : "12.5px")
-      .style("font-weight", "normal")
-      .style("fill", "#111")
-      .style("opacity", 0)
-      .text(formatSwiss(d[s.key]))
-      .transition()
-      .delay(i * 90 + SEGMENT_DURATION + 100)
-      .duration(300)
-      .style("opacity", 1);
+    const cx = x0(d.year) + groupX + x1.bandwidth() / 2;
+    const delay = i * 90 + SEGMENT_DURATION + 100;
+    drawValuePair(g, d, cx, y(d[s.key]), formatSwiss(d[s.key]), formatSwiss(d[s.internKey]), delay, isMobile);
   });
+}
+
+// Paire "valeur principale (grasse) / valeur interne entre parentheses
+// (grise, plus discrete)" empilee au-dessus du sommet d'une barre -
+// meme mise en page que value-main / value-intern dans le graphique
+// groupe Rechtsdienst d'origine.
+function drawValuePair(g, d, cx, yBarTop, mainText, internText, delay, isMobile) {
+  const mainLabel = g.append("text")
+    .attr("class", "value total")
+    .datum(d)
+    .attr("x", cx)
+    .attr("y", yBarTop - 20)
+    .attr("text-anchor", "middle")
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "11px" : "12.5px")
+    .style("font-weight", "normal")
+    .style("fill", "#111")
+    .style("opacity", 0)
+    .text(mainText);
+
+  mainLabel.transition()
+    .delay(delay)
+    .duration(300)
+    .style("opacity", 1);
+
+  const internLabel = g.append("text")
+    .attr("class", "value-intern total")
+    .datum(d)
+    .attr("x", cx)
+    .attr("y", yBarTop - 8)
+    .attr("text-anchor", "middle")
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "9.5px" : "10.5px")
+    .style("fill", "#888")
+    .style("opacity", 0)
+    .text(`(${internText})`);
+
+  internLabel.transition()
+    .delay(delay + 150)
+    .duration(300)
+    .style("opacity", 1);
+}
+
+// Badge de fond plein (toujours en petrol opaque, quel que soit
+// l'opacite propre du segment) pour garder le texte lisible quand un
+// segment est trop bas pour le contenir - meme principe que le badge
+// du graphique "Inspections contraste".
+function drawLabelBadge(container, text, cx, cy, fontSize) {
+  const digitWidth = fontSize * 0.62;
+  const badgeWidth = text.length * digitWidth + 10;
+  const badgeHeight = fontSize + 8;
+
+  container.append("rect")
+    .attr("x", cx - badgeWidth / 2)
+    .attr("y", cy - badgeHeight / 2)
+    .attr("width", badgeWidth)
+    .attr("height", badgeHeight)
+    .attr("rx", 3)
+    .attr("fill", BASE_COLOR)
+    .attr("stroke", STROKE_COLOR)
+    .attr("stroke-width", 1);
 }
 
 // Valeur par segment de la colonne empilée, masquée par défaut,
 // révélée au survol de l'année (cf. highlightColumn()). Quand un
-// segment est trop bas pour porter le texte lisiblement, un petit
-// badge de sa propre teinte (avec liseré blanc) est ajouté derrière.
+// segment est trop bas pour porter le texte lisiblement, un badge
+// plein (petrol opaque) est ajouté derrière.
 function drawComboSegmentLabels(g, d, i, scales, isMobile) {
   const { x0, x1, y, stackedSeries } = scales;
   const comboX = x0(d.year) + x1("combo");
@@ -282,7 +411,8 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
     const segHeight = segBottom - segTop;
     const inside = segHeight > MIN_INSIDE_LABEL_HEIGHT;
     const labelY = (segTop + segBottom) / 2;
-    const text = formatSwiss(d[s.key]);
+    const mainText = formatSwiss(d[s.key]);
+    const internText = `(${formatSwiss(d[s.internKey])})`;
 
     const group = g.append("g")
       .attr("class", `segval seg-${s.key}`)
@@ -290,58 +420,43 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
       .datum(d);
 
     if (!inside) {
-      const digitWidth = fontSize * 0.62;
-      const badgeWidth = text.length * digitWidth + 10;
-      const badgeHeight = fontSize + 8;
-
-      group.append("rect")
-        .attr("x", labelX - badgeWidth / 2)
-        .attr("y", labelY - badgeHeight / 2)
-        .attr("width", badgeWidth)
-        .attr("height", badgeHeight)
-        .attr("rx", 3)
-        .attr("fill", s.color)
-        .attr("stroke", "#fff")
-        .attr("stroke-width", 1);
+      drawLabelBadge(group, mainText.length >= internText.length ? mainText : internText, labelX, labelY, fontSize);
     }
 
     group.append("text")
       .attr("x", labelX)
-      .attr("y", labelY)
+      .attr("y", labelY - 6)
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle")
       .style("font-family", "Arial")
       .style("font-size", fontSize + "px")
       .style("font-weight", "normal")
       .style("fill", "#111")
-      .text(text);
+      .text(mainText);
+
+    group.append("text")
+      .attr("x", labelX)
+      .attr("y", labelY + 8)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .style("font-family", "Arial")
+      .style("font-size", (fontSize - 1.5) + "px")
+      .style("fill", "#888")
+      .text(internText);
   });
 }
 
 // Total de la colonne empilée (Art73_74 + Art76), toujours visible -
-// c'est la meme grandeur que "Total" dans le graphique groupe d'origine.
+// c'est la meme grandeur que "Total" (et "Total_Intern") dans le
+// graphique groupe d'origine.
 function drawComboTotalLabel(g, d, i, scales, layout, isMobile) {
   const { x0, x1, y } = scales;
   const comboX = x0(d.year) + x1("combo");
   const barW = x1.bandwidth();
   const yTop = y(d.comboTotal);
+  const delay = i * 90 + (STACK_SERIES.length - 1) * 60 + SEGMENT_DURATION + 100;
 
-  g.append("text")
-    .attr("class", "value total")
-    .datum(d)
-    .attr("x", comboX + barW / 2)
-    .attr("y", yTop - 8)
-    .attr("text-anchor", "middle")
-    .style("font-family", "Arial")
-    .style("font-size", isMobile ? "11.5px" : "13.5px")
-    .style("font-weight", "normal")
-    .style("fill", "#111")
-    .style("opacity", 0)
-    .text(formatSwiss(d.comboTotal))
-    .transition()
-    .delay(i * 90 + (STACK_SERIES.length - 1) * 60 + SEGMENT_DURATION + 100)
-    .duration(300)
-    .style("opacity", 1);
+  drawValuePair(g, d, comboX + barW / 2, yTop, formatSwiss(d.comboTotal), formatSwiss(d.comboIntern), delay, isMobile);
 }
 
 function drawYearLabel(g, d, x0, layout, isMobile) {
@@ -440,6 +555,9 @@ function drawChart() {
 
     const g = svg.append("g")
       .attr("transform", `translate(${layout.margin.left}, ${layout.margin.top})`);
+
+    drawGridAndAxis(g, scales, layout, isMobile);
+    drawAxisTitle(g, layout, AXIS_LEFT_LABEL_LOOKUP[currentLang], isMobile);
 
     drawColumns(g, data, scales, layout, isMobile);
     attachHoverArea(g, data, scales.x0, layout);

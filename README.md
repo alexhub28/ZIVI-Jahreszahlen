@@ -14,7 +14,7 @@ Die Grafiken unterstützen drei Sprachen über einen URL-Parameter, z. B. `index
 - [**Diensttage nach Tätigkeitsbereich (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/DT%20nach%20TB%20pie%20chart/) — Anzahl geleisteter Diensttage nach Tätigkeitsbereich
 - [**Einsatzbetriebe und Einsatzplätze (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Einsatzbetriebe%20und%20Einsatzpl%C3%A4tze/) — Anzahl Einsatzbetriebe und Einsatzplätze pro Jahr
 - [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB/) — Anzahl Einsatzbetriebe und Einsatzplätze nach Tätigkeitsbereich
-- [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (bubble chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB%20bulles/) — Anzahl Einsatzbetriebe und Einsatzplätze nach Tätigkeitsbereich
+- [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (mirror chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB%20miroir/) — Anzahl Einsatzbetriebe und Einsatzplätze nach Tätigkeitsbereich
 - [**Inspektionen (bar chart, two-tone)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Inspections%20bicolores/) — Anzahl angekündigter / unangekündigter Inspektionen
 - [**Inspektionen (bar chart, gradient)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Inspections%20contraste/) — Anzahl angekündigter / unangekündigter Inspektionen
 - [**Anzahl Kurse (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Anzahl-Kurse/) — Anzahl Kurse pro Jahr
@@ -41,7 +41,7 @@ Les graphiques supportent trois langues via un paramètre d'URL, par ex. `index.
 - [**Diensttage nach Tätigkeitsbereich (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/DT%20nach%20TB%20pie%20chart/) — Nombre de jours de service accomplis par domaine d'activité
 - [**Einsatzbetriebe und Einsatzplätze (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Einsatzbetriebe%20und%20Einsatzpl%C3%A4tze/) — Nombre d'établissements et de places d'affectation par année
 - [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB/) — Nombre d'établissements et de places d'affectation par domaine d'activité
-- [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (bubble chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB%20bulles/) — Nombre d'établissements et de places d'affectation par domaine d'activité
+- [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (mirror chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB%20miroir/) — Nombre d'établissements et de places d'affectation par domaine d'activité
 - [**Inspektionen (bar chart, two-tone)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Inspections%20bicolores/) — Nombre d'inspections annoncées / non annoncées
 - [**Inspektionen (bar chart, gradient)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Inspections%20contraste/) — Nombre d'inspections annoncées / non annoncées
 - [**Anzahl Kurse (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Anzahl-Kurse/) — Nombre de cours par année

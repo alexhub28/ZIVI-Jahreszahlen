@@ -22,6 +22,7 @@ Die Grafiken unterstützen drei Sprachen über einen URL-Parameter, z. B. `index
 - [**Kurse pro Kursart (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse%20pro%20Kursart%20bar%20chart/) — Anzahl Kurse nach Kursart
 - [**Kurse pro Kursart (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse%20pro%20Kursart%20pie%20chart/) — Anzahl Kurse nach Kursart
 - [**Rechtsdienst (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst/) — Disziplinarentscheide pro Jahr
+- [**Rechtsdienst (stacked bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst%20empil%C3%A9/) — Disziplinarentscheide pro Jahr, 4 Kategorien gestapelt
 
 ---
 
@@ -49,3 +50,4 @@ Les graphiques supportent trois langues via un paramètre d'URL, par ex. `index.
 - [**Kurse pro Kursart (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse%20pro%20Kursart%20bar%20chart/) — Nombre de cours par genre de cours
 - [**Kurse pro Kursart (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse%20pro%20Kursart%20pie%20chart/) — Nombre de cours par genre de cours
 - [**Rechtsdienst (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst/) — Décisions disciplinaires par année
+- [**Rechtsdienst (stacked bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst%20empil%C3%A9/) — Décisions disciplinaires par année, 4 catégories empilées

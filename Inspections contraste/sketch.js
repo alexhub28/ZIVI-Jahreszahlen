@@ -2,14 +2,15 @@
 // Configuration
 // ============================================================
 
-// Graphique à 2 variables : petrol (Angekündigt) + lila (Unangekündigt),
-// couleurs unies (pas de dégradé) - mêmes teintes que la version
-// "bicolores" du dossier parent.
-const BASE_ANN = "#5A959D";     // accent1 — petrol (Angekuendigt)
-const STROKE_ANN = "#46747A";   // petrol plus soutenu, contour de segment/badge
+// Graphique "contraste" : une seule teinte (petrol, accent1), affichee a
+// pleine intensite pour Angekuendigt et a 50% pour Unangekuendigt - par
+// opposition a la version "bicolores" du dossier parent, qui utilise
+// deux couleurs distinctes pour les deux categories.
+const BASE_COLOR = "#5A959D";   // accent1 — petrol, teinte unique
+const STROKE_COLOR = "#46747A"; // petrol plus soutenu, contour commun aux deux segments
 
-const BASE_UNANN = "#A3A8CA";   // accent3 — lila (Unangekuendigt)
-const STROKE_UNANN = "#7B81AC"; // lila plus soutenu, contour de segment/badge
+const ANN_OPACITY = 1;     // Angekuendigt — intensite pleine
+const UNANN_OPACITY = 0.5; // Unangekuendigt — intensite a 50%
 
 const DATA_FILE = "ABI_Inspektionen_2025.csv";
 const MOBILE_BREAKPOINT = 600;
@@ -27,16 +28,16 @@ const titleLookup = {
 // versions ensemble.
 const legendLookup = {
   de: [
-    { color: BASE_ANN, text: "Angekündigt" },
-    { color: BASE_UNANN, text: "Unangekündigt" }
+    { color: BASE_COLOR, opacity: ANN_OPACITY, text: "Angekündigt" },
+    { color: BASE_COLOR, opacity: UNANN_OPACITY, text: "Unangekündigt" }
   ],
   fr: [
-    { color: BASE_ANN, text: "Annoncées" },
-    { color: BASE_UNANN, text: "Non annoncées" }
+    { color: BASE_COLOR, opacity: ANN_OPACITY, text: "Annoncées" },
+    { color: BASE_COLOR, opacity: UNANN_OPACITY, text: "Non annoncées" }
   ],
   it: [
-    { color: BASE_ANN, text: "Annunciate" },
-    { color: BASE_UNANN, text: "Non annunciate" }
+    { color: BASE_COLOR, opacity: ANN_OPACITY, text: "Annunciate" },
+    { color: BASE_COLOR, opacity: UNANN_OPACITY, text: "Non annunciate" }
   ]
 };
 
@@ -108,11 +109,11 @@ function createScales(data, layout) {
 }
 
 function getAnnColor() {
-  return BASE_ANN;
+  return BASE_COLOR;
 }
 
 function getUnannColor() {
-  return BASE_UNANN;
+  return BASE_COLOR;
 }
 
 // ============================================================
@@ -133,7 +134,8 @@ function drawLegend(svg, margin, isMobile) {
     row.append("rect")
       .attr("width", 12)
       .attr("height", 12)
-      .attr("fill", item.color);
+      .attr("fill", item.color)
+      .attr("fill-opacity", item.opacity);
 
     row.append("text")
       .attr("x", 18)
@@ -178,7 +180,8 @@ function drawAnnSegment(col, d, i, scales, layout) {
     .attr("y", innerHeight)
     .attr("height", 0)
     .attr("fill", getAnnColor(d.ann, scales))
-    .attr("stroke", STROKE_ANN)
+    .attr("fill-opacity", ANN_OPACITY)
+    .attr("stroke", STROKE_COLOR)
     .attr("stroke-width", 1)
     .transition()
     .delay(i * 80)
@@ -203,7 +206,8 @@ function drawUnannSegment(col, d, i, scales, layout) {
     .attr("y", innerHeight)
     .attr("height", 0)
     .attr("fill", getUnannColor(d.unann, scales))
-    .attr("stroke", STROKE_UNANN)
+    .attr("fill-opacity", UNANN_OPACITY)
+    .attr("stroke", STROKE_COLOR)
     .attr("stroke-width", 1)
     .transition()
     .delay(i * 80)
@@ -232,7 +236,7 @@ function drawAnnLabel(col, d, scales, layout, isMobile) {
   // Quand le segment est trop petit pour contenir le texte, un petit
   // badge est ajoute derriere pour garder le contraste avec le fond.
   if (!annInside) {
-    drawLabelBadge(col, formatSwiss(d.ann), labelX, labelY, fontSize, getAnnColor(d.ann, scales), STROKE_ANN);
+    drawLabelBadge(col, formatSwiss(d.ann), labelX, labelY, fontSize, getAnnColor(d.ann, scales), STROKE_COLOR);
   }
 
   col.append("text")

@@ -104,7 +104,13 @@ function buildTimelineLayout(data, containerWidth, isMobile) {
   const step = data.length > 1 ? innerWidth / (data.length - 1) : innerWidth;
   const maxR = Math.max(MIN_RADIUS, Math.min(nominalMaxR, (step / 2) * BUBBLE_GUTTER));
 
-  const r = d3.scaleSqrt().domain([0, maxValue]).range([MIN_RADIUS, maxR]);
+  // Domaine ET intervalle de sortie bases sur zero : l'aire de chaque
+  // bulle est ainsi strictement proportionnelle a sa valeur (pas
+  // seulement son rayon). Le plancher MIN_RADIUS est applique apres
+  // coup, en garde-fou pour une valeur nulle/quasi nulle, sans fausser
+  // la proportionnalite entre les valeurs reelles des donnees.
+  const rScale = d3.scaleSqrt().domain([0, maxValue]).range([0, maxR]);
+  const r = value => Math.max(MIN_RADIUS, rScale(value));
 
   const bubbleY = margin.top + maxR;
   const axisY = bubbleY + maxR + AXIS_GAP;
@@ -156,53 +162,6 @@ function pulseLoop(selection, minScale, maxScale, duration, initialDelay) {
 }
 
 // ============================================================
-// Info-bulle (valeur exacte, revelee au survol) — centree sur la bulle
-// elle-meme (d.x, d.y), pas sur la position du curseur : sinon la bulle
-// flottante se retrouve calee pres du bord par lequel la souris est
-// entree (souvent le haut), au lieu d'etre centree sur la cellule.
-// ============================================================
-
-function createTooltip(svg) {
-  const tooltip = svg.append("g").style("opacity", 0).style("pointer-events", "none");
-  const tooltipRect = tooltip.append("rect")
-    .attr("fill", "white")
-    .attr("stroke", "#555")
-    .attr("stroke-width", 1.2)
-    .attr("rx", 5);
-  const tooltipText = tooltip.append("text")
-    .attr("text-anchor", "middle")
-    .style("font-family", "Arial")
-    .style("font-size", "13.5px")
-    .style("font-weight", "normal")
-    .style("fill", "#111");
-
-  const padX = 10, padY = 7;
-
-  function show(d) {
-    tooltip.raise();
-
-    tooltipText.attr("x", 0).attr("y", 0)
-      .text(formatSwiss(d.data.value));
-
-    const bbox = tooltipText.node().getBBox();
-    const boxW = bbox.width + padX * 2;
-    const boxH = bbox.height + padY * 2;
-
-    // Centree sur le centre de la bulle (d.x, d.y).
-    tooltip.attr("transform", `translate(${d.x - boxW / 2}, ${d.y - boxH / 2})`);
-    tooltipRect.attr("x", 0).attr("y", 0).attr("width", boxW).attr("height", boxH);
-    tooltipText.attr("x", boxW / 2).attr("y", padY - bbox.y);
-    tooltip.style("opacity", 1);
-  }
-
-  function hide() {
-    tooltip.style("opacity", 0);
-  }
-
-  return { show, hide };
-}
-
-// ============================================================
 // Bulles
 // ============================================================
 
@@ -231,10 +190,10 @@ function drawBubbleShapes(svg, nodes, isMobile) {
     .ease(d3.easeCubicOut)
     .attr("r", d => d.r);
 
-  // Seule l'annee reste affichee en permanence dans la bulle — la valeur
-  // n'apparait qu'au survol, dans l'info-bulle flottante (cf. tooltip).
+  // L'annee est deja portee par l'axe x : la bulle affiche desormais sa
+  // valeur en permanence (plus besoin d'un survol pour la lire).
   pulse.append("text")
-    .attr("class", "bubble-year")
+    .attr("class", "bubble-value")
     .attr("text-anchor", "middle")
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
@@ -246,7 +205,7 @@ function drawBubbleShapes(svg, nodes, isMobile) {
     .style("stroke-linejoin", "round")
     .style("font-size", d => Math.min(isMobile ? 14 : 16, d.r * 0.5) + "px")
     .style("opacity", 0)
-    .text(d => d.data.year)
+    .text(d => formatSwiss(d.data.value))
     .transition()
     .delay((d, i) => i * 70 + 350)
     .duration(300)
@@ -271,22 +230,20 @@ function startBubblePulses(bubble) {
   });
 }
 
-function attachBubbleInteractions(bubble, tooltip) {
+function attachBubbleInteractions(bubble) {
   bubble
-    .on("mouseover", function (event, d) {
+    .on("mouseover", function () {
       d3.select(this).select("circle").attr("stroke", "#333").attr("stroke-width", 2.5);
-      tooltip.show(d);
     })
     .on("mouseout", function () {
       d3.select(this).select("circle").attr("stroke", "#fff").attr("stroke-width", 1.5);
-      tooltip.hide();
     });
 }
 
-function drawBubbles(svg, nodes, isMobile, tooltip) {
+function drawBubbles(svg, nodes, isMobile) {
   const bubble = drawBubbleShapes(svg, nodes, isMobile);
   startBubblePulses(bubble);
-  attachBubbleInteractions(bubble, tooltip);
+  attachBubbleInteractions(bubble);
   return bubble;
 }
 
@@ -319,7 +276,6 @@ function drawChart() {
 
     drawXAxis(svg, layout.x, layout.margin, layout.axisY, isMobile);
 
-    const tooltip = createTooltip(svg);
-    drawBubbles(svg, layout.nodes, isMobile, tooltip);
+    drawBubbles(svg, layout.nodes, isMobile);
   });
 }

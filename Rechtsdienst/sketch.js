@@ -69,7 +69,7 @@ const SERIES = [
   }
 ];
 
-const LINE_COLOR = "#5A959D"; // petrol — Diensttage, comme DT geleistet
+const LINE_COLOR = "#FF0000"; // Rouge Bund (signal) — Diensttage
 const LINE_LABEL_LOOKUP = {
   de: "Anrechenbare Diensttage",
   fr: "Jours de service pris en compte",

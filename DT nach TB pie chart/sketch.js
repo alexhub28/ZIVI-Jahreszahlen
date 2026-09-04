@@ -101,10 +101,44 @@ function styleLabelText(sel) {
     .style("fill", "#111");
 }
 
+// Position d'une étiquette extérieure (petite bulle) : en dessous par
+// défaut, mais à droite / à gauche / au-dessus si la position par défaut
+// tomberait sur une bulle voisine (ex. une petite bulle coincée entre
+// deux grandes). Teste les quatre côtés dans cet ordre et garde le
+// premier qui ne chevauche aucune autre bulle du graphique.
+function chooseOutsideLabelPosition(d, allNodes) {
+  const GAP = 8;
+  const candidates = [
+    { dx: 0, dy: d.r + GAP + 6, anchor: "middle" },     // en dessous
+    { dx: d.r + GAP, dy: 0, anchor: "start" },          // à droite
+    { dx: -(d.r + GAP), dy: 0, anchor: "end" },         // à gauche
+    { dx: 0, dy: -(d.r + GAP + 4), anchor: "middle" }   // au-dessus
+  ];
+
+  // Marge generuse (pas seulement le rayon de l'autre bulle) : le point
+  // teste n'est que l'ancrage du texte, qui s'etend lui-meme de part et
+  // d'autre — sans cette marge, une etiquette peut techniquement ne pas
+  // toucher le CERCLE voisin tout en paraissant collee dessus.
+  const LABEL_HALF_WIDTH = 22;
+
+  for (const c of candidates) {
+    const px = d.x + c.dx;
+    const py = d.y + c.dy;
+    const collides = allNodes.some(other => {
+      if (other === d) return false;
+      return Math.hypot(px - other.x, py - other.y) < other.r + LABEL_HALF_WIDTH;
+    });
+    if (!collides) return c;
+  }
+  return candidates[0]; // repli : en dessous, même si ça chevauche encore
+}
+
 // Seul le pourcentage reste affiché en permanence (dans la bulle si elle
-// est assez grande pour l'accueillir, juste en dessous sinon) — le nom du
+// est assez grande pour l'accueillir, juste à côté sinon) — le nom du
 // domaine et le chiffre exact n'apparaissent qu'au survol (info-bulle).
 function drawPercentLabels(bubble, isMobile) {
+  const allNodes = bubble.data();
+
   const bigBubbles = bubble.filter(d => d.data.Percent >= INNER_LABEL_MIN_PERCENT);
   const smallBubbles = bubble.filter(d => d.data.Percent < INNER_LABEL_MIN_PERCENT);
 
@@ -122,11 +156,17 @@ function drawPercentLabels(bubble, isMobile) {
     .duration(300)
     .style("opacity", 1);
 
+  const outsidePosition = new Map(
+    smallBubbles.data().map(d => [d, chooseOutsideLabelPosition(d, allNodes)])
+  );
+
   styleLabelText(
     smallBubbles.append("text")
       .attr("class", "percent-label percent-label-outside")
-      .attr("text-anchor", "middle")
-      .attr("y", d => d.r + 12)
+      .attr("text-anchor", d => outsidePosition.get(d).anchor)
+      .attr("dominant-baseline", "middle")
+      .attr("x", d => outsidePosition.get(d).dx)
+      .attr("y", d => outsidePosition.get(d).dy)
       .style("font-size", isMobile ? "9.5px" : "10.5px")
       .style("opacity", 0)
   )

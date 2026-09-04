@@ -8,22 +8,18 @@ const titleLookup = {
   it: "Decisioni disciplinari (impilate)"
 };
 
-// Meme 4 categories que le graphique groupe (Rechtsdienst), mais
-// empilees en une seule colonne par annee au lieu d'etre cote a cote.
-// Charte : plus de 2 categories -> Petrol, Lila, Mint, Kaki, une
-// teinte fixe par categorie (on a ici exactement 4 categories pour les
-// 4 teintes disponibles, pas de recyclage necessaire). Ordre de la
-// liste = ordre d'empilement, de bas en haut.
-const SERIES = [
-  {
-    key: "Strafanzeigen",
-    color: "#5A959D", // petrol
-    labelLookup: {
-      de: "Strafanzeigen",
-      fr: "Plaintes pénales",
-      it: "Denuncia penale"
-    }
-  },
+// Le "Total Disziplinarentscheide" du graphique d'origine est la somme
+// des deux categories ci-dessous (STACK_SERIES) - elles sont donc
+// empilees en une seule colonne. Strafanzeigen et Strafbefehle sont des
+// mesures a part (pas incluses dans ce total) : chacune garde sa propre
+// colonne simple, a cote de la colonne empilee. Les 3 colonnes d'une
+// meme annee sont groupees cote a cote (comme l'etaient les 5 barres du
+// graphique d'origine), avec la meme echelle verticale pour rester
+// comparables entre elles.
+//
+// Charte : plus de 2 categories -> Petrol, Lila, Mint, Kaki, une teinte
+// fixe par categorie (4 categories pour les 4 teintes disponibles).
+const STACK_SERIES = [
   {
     key: "Art73_74",
     color: "#A3A8CA", // lila
@@ -31,15 +27,6 @@ const SERIES = [
       de: "Disziplinarentscheide wegen Art. 73 oder 74 ZDG",
       fr: "Décisions disciplinaires pour infraction à l'art. 73 ou 74 LSC",
       it: "Decisioni disciplinari causa articoli 73 o 74 LSC"
-    }
-  },
-  {
-    key: "Strafbefehle",
-    color: "#CAE7EA", // mint
-    labelLookup: {
-      de: "Strafbefehle wegen Zivildienstverweigerung",
-      fr: "Ordonnances pénales pour refus de servir",
-      it: "Decreti penali causa Omissione del servizi"
     }
   },
   {
@@ -53,10 +40,40 @@ const SERIES = [
   }
 ];
 
+const SOLO_SERIES = [
+  {
+    key: "Strafanzeigen",
+    color: "#5A959D", // petrol
+    labelLookup: {
+      de: "Strafanzeigen",
+      fr: "Plaintes pénales",
+      it: "Denuncia penale"
+    }
+  },
+  {
+    key: "Strafbefehle",
+    color: "#CAE7EA", // mint
+    labelLookup: {
+      de: "Strafbefehle wegen Zivildienstverweigerung",
+      fr: "Ordonnances pénales pour refus de servir",
+      it: "Decreti penali causa Omissione del servizi"
+    }
+  }
+];
+
+// Ordre d'affichage de la legende, tel que demande initialement.
+const LEGEND_ORDER = ["Strafanzeigen", "Art73_74", "Strafbefehle", "Art76"];
+const ALL_SERIES = [...STACK_SERIES, ...SOLO_SERIES];
+const SERIES_BY_KEY = Object.fromEntries(ALL_SERIES.map(s => [s.key, s]));
+
+// Les 3 colonnes groupees par annee : la colonne empilee ("combo") puis
+// les deux colonnes simples.
+const GROUPS = ["combo", "Strafanzeigen", "Strafbefehle"];
+
 const DATA_FILE = "RD_2025.csv";
 const MOBILE_BREAKPOINT = 600;
 const Y_AXIS_HEADROOM = 1.12;
-const MIN_INSIDE_LABEL_HEIGHT = 22; // en dessous, l'etiquette sort du segment
+const MIN_INSIDE_LABEL_HEIGHT = 22; // en dessous, l'etiquette de segment sort du segment
 const SEGMENT_DURATION = 650;
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
@@ -79,8 +96,8 @@ function parseData(raw) {
   return raw
     .map(d => {
       const row = { year: d["Jahr"] };
-      SERIES.forEach(s => { row[s.key] = +d[s.key]; });
-      row.total = d3.sum(SERIES, s => row[s.key]);
+      ALL_SERIES.forEach(s => { row[s.key] = +d[s.key]; });
+      row.comboTotal = d3.sum(STACK_SERIES, s => row[s.key]);
       return row;
     })
     .sort((a, b) => a.year - b.year);
@@ -112,35 +129,45 @@ function computeLayout(containerWidth, isMobile) {
 }
 
 function createScales(data, layout) {
-  const maxTotal = d3.max(data, d => d.total);
+  // Echelle verticale commune aux 3 colonnes d'une meme annee (et a
+  // toutes les annees) : les hauteurs restent comparables entre la
+  // colonne empilée et les deux colonnes simples.
+  const maxAny = d3.max(data, d => Math.max(d.comboTotal, d.Strafanzeigen, d.Strafbefehle));
 
-  const x = d3.scaleBand()
+  const x0 = d3.scaleBand()
     .domain(data.map(d => d.year))
     .range([0, layout.innerWidth])
-    .padding(0.4);
+    .paddingInner(0.35)
+    .paddingOuter(0.15);
+
+  const x1 = d3.scaleBand()
+    .domain(GROUPS)
+    .range([0, x0.bandwidth()])
+    .padding(0.16);
 
   const y = d3.scaleLinear()
-    .domain([0, maxTotal * Y_AXIS_HEADROOM])
+    .domain([0, maxAny * Y_AXIS_HEADROOM])
     .range([layout.innerHeight, 0]);
 
-  // Empilement : une couche par categorie (ordre de SERIES = ordre
-  // d'empilement, de bas en haut), chaque couche porte pour chaque
-  // annee un couple [y0, y1] (bornes cumulees), meme index que data.
-  const stack = d3.stack().keys(SERIES.map(s => s.key));
+  // Empilement de la colonne "combo" uniquement (Art73_74 + Art76) :
+  // une couche par categorie, chaque couche porte pour chaque annee un
+  // couple [y0, y1] (bornes cumulees), meme index que data.
+  const stack = d3.stack().keys(STACK_SERIES.map(s => s.key));
   const stackedSeries = stack(data);
 
-  return { x, y, stackedSeries };
+  return { x0, x1, y, stackedSeries };
 }
 
 // ============================================================
 // Légende (HTML, sous le graphique — mêmes classes que le graphique
-// groupé Rechtsdienst, sans l'item "ligne" puisqu'il n'y en a pas ici).
+// groupé Rechtsdienst).
 // ============================================================
 
 function drawLegend() {
   const legend = d3.select("#legend");
 
-  SERIES.forEach(s => {
+  LEGEND_ORDER.forEach(key => {
+    const s = SERIES_BY_KEY[key];
     const item = legend.append("div").attr("class", "legend-item");
     item.append("span").attr("class", "legend-swatch").style("background", s.color);
     item.append("div").attr("class", "legend-text").text(s.labelLookup[currentLang]);
@@ -148,23 +175,38 @@ function drawLegend() {
 }
 
 // ============================================================
-// Colonnes empilées
+// Colonnes (groupées par année, la première empilée)
 // ============================================================
 
 function drawColumns(g, data, scales, layout, isMobile) {
-  const { x, y, stackedSeries } = scales;
+  const { x0, x1, y, stackedSeries } = scales;
 
-  // Un groupe de rects par couche (categorie), dans l'ordre d'empilement.
+  drawComboSegments(g, data, scales, layout);
+
+  SOLO_SERIES.forEach(s => drawSoloBars(g, data, scales, layout, isMobile, s));
+
+  data.forEach((d, i) => {
+    drawComboSegmentLabels(g, d, i, scales, isMobile);
+    drawComboTotalLabel(g, d, i, scales, layout, isMobile);
+    drawYearLabel(g, d, x0, layout, isMobile);
+  });
+}
+
+// --- Colonne empilée (Art73_74 + Art76) ---
+function drawComboSegments(g, data, scales, layout) {
+  const { x0, x1, y, stackedSeries } = scales;
+  const comboX = x1("combo");
+
   stackedSeries.forEach((layer, si) => {
-    const s = SERIES[si];
+    const s = STACK_SERIES[si];
 
     g.selectAll(`rect.seg-${s.key}`)
       .data(layer)
       .enter()
       .append("rect")
       .attr("class", `bar seg-${s.key}`)
-      .attr("x", d => x(d.data.year))
-      .attr("width", x.bandwidth())
+      .attr("x", d => x0(d.data.year) + comboX)
+      .attr("width", x1.bandwidth())
       .attr("y", layout.innerHeight)
       .attr("height", 0)
       .attr("fill", s.color)
@@ -175,29 +217,65 @@ function drawColumns(g, data, scales, layout, isMobile) {
       .attr("y", d => y(d[1]))
       .attr("height", d => y(d[0]) - y(d[1]));
   });
+}
 
+// --- Colonnes simples (Strafanzeigen, Strafbefehle) ---
+function drawSoloBars(g, data, scales, layout, isMobile, s) {
+  const { x0, x1, y } = scales;
+  const groupX = x1(s.key);
+
+  g.selectAll(`rect.solo-${s.key}`)
+    .data(data)
+    .enter()
+    .append("rect")
+    .attr("class", `bar solo-${s.key}`)
+    .attr("x", d => x0(d.year) + groupX)
+    .attr("width", x1.bandwidth())
+    .attr("y", layout.innerHeight)
+    .attr("height", 0)
+    .attr("fill", s.color)
+    .transition()
+    .delay((d, i) => i * 90)
+    .duration(SEGMENT_DURATION)
+    .ease(d3.easeCubicOut)
+    .attr("y", d => y(d[s.key]))
+    .attr("height", d => layout.innerHeight - y(d[s.key]));
+
+  // Valeur toujours visible au-dessus de la barre (colonne a une seule
+  // valeur, pas de detail a reveler au survol).
   data.forEach((d, i) => {
-    drawSegmentLabels(g, d, i, scales, isMobile);
-    drawTotalLabel(g, d, i, scales, layout, isMobile);
-    drawYearLabel(g, d, x, layout, isMobile);
+    g.append("text")
+      .attr("class", "value total")
+      .datum(d)
+      .attr("x", x0(d.year) + groupX + x1.bandwidth() / 2)
+      .attr("y", y(d[s.key]) - 8)
+      .attr("text-anchor", "middle")
+      .style("font-family", "Arial")
+      .style("font-size", isMobile ? "11px" : "12.5px")
+      .style("font-weight", "normal")
+      .style("fill", "#111")
+      .style("opacity", 0)
+      .text(formatSwiss(d[s.key]))
+      .transition()
+      .delay(i * 90 + SEGMENT_DURATION + 100)
+      .duration(300)
+      .style("opacity", 1);
   });
 }
 
-// Valeur par segment, masquee par defaut, revelee au survol de la
-// colonne (cf. highlightColumn()). Quand un segment est trop bas pour
-// contenir le texte lisiblement, un petit badge de sa propre teinte
-// (avec lisere blanc) est ajoute derriere : il peut deborder legerement
-// sur les segments voisins mais reste associable a sa categorie grace
-// a sa couleur.
-function drawSegmentLabels(g, d, i, scales, isMobile) {
-  const { x, y, stackedSeries } = scales;
-  const barX = x(d.year);
-  const barW = x.bandwidth();
+// Valeur par segment de la colonne empilée, masquée par défaut,
+// révélée au survol de l'année (cf. highlightColumn()). Quand un
+// segment est trop bas pour porter le texte lisiblement, un petit
+// badge de sa propre teinte (avec liseré blanc) est ajouté derrière.
+function drawComboSegmentLabels(g, d, i, scales, isMobile) {
+  const { x0, x1, y, stackedSeries } = scales;
+  const comboX = x0(d.year) + x1("combo");
+  const barW = x1.bandwidth();
   const fontSize = isMobile ? 10 : 11.5;
-  const labelX = barX + barW / 2;
+  const labelX = comboX + barW / 2;
 
   stackedSeries.forEach((layer, si) => {
-    const s = SERIES[si];
+    const s = STACK_SERIES[si];
     const point = layer[i]; // [y0, y1] de cette annee, meme index que data
     const segTop = y(point[1]);
     const segBottom = y(point[0]);
@@ -240,15 +318,18 @@ function drawSegmentLabels(g, d, i, scales, isMobile) {
   });
 }
 
-function drawTotalLabel(g, d, i, scales, layout, isMobile) {
-  const { x, y } = scales;
-  const barX = x(d.year);
-  const barW = x.bandwidth();
-  const yTop = y(d.total);
+// Total de la colonne empilée (Art73_74 + Art76), toujours visible -
+// c'est la meme grandeur que "Total" dans le graphique groupe d'origine.
+function drawComboTotalLabel(g, d, i, scales, layout, isMobile) {
+  const { x0, x1, y } = scales;
+  const comboX = x0(d.year) + x1("combo");
+  const barW = x1.bandwidth();
+  const yTop = y(d.comboTotal);
 
   g.append("text")
     .attr("class", "value total")
-    .attr("x", barX + barW / 2)
+    .datum(d)
+    .attr("x", comboX + barW / 2)
     .attr("y", yTop - 8)
     .attr("text-anchor", "middle")
     .style("font-family", "Arial")
@@ -256,19 +337,20 @@ function drawTotalLabel(g, d, i, scales, layout, isMobile) {
     .style("font-weight", "normal")
     .style("fill", "#111")
     .style("opacity", 0)
-    .text(formatSwiss(d.total))
+    .text(formatSwiss(d.comboTotal))
     .transition()
-    .delay(i * 90 + (SERIES.length - 1) * 60 + SEGMENT_DURATION + 100)
+    .delay(i * 90 + (STACK_SERIES.length - 1) * 60 + SEGMENT_DURATION + 100)
     .duration(300)
     .style("opacity", 1);
 }
 
-function drawYearLabel(g, d, x, layout, isMobile) {
-  const barX = x(d.year);
-  const barW = x.bandwidth();
+function drawYearLabel(g, d, x0, layout, isMobile) {
+  const barX = x0(d.year);
+  const barW = x0.bandwidth();
 
   g.append("text")
     .attr("class", "label")
+    .datum(d)
     .attr("x", barX + barW / 2)
     .attr("y", layout.innerHeight + 22)
     .attr("text-anchor", "middle")
@@ -282,14 +364,16 @@ function drawYearLabel(g, d, x, layout, isMobile) {
 // Interaction
 // ============================================================
 
-function attachHoverArea(g, data, x, layout) {
+// Une seule zone de survol par annee, couvrant les 3 colonnes du
+// groupe : isole l'annee entiere (comme le graphique groupe d'origine).
+function attachHoverArea(g, data, x0, layout) {
   data.forEach(d => {
     g.append("rect")
       .attr("class", "hit")
       .datum(d)
-      .attr("x", x(d.year))
+      .attr("x", x0(d.year))
       .attr("y", 0)
-      .attr("width", x.bandwidth())
+      .attr("width", x0.bandwidth())
       .attr("height", layout.innerHeight + layout.margin.bottom)
       .attr("fill", "transparent")
       .style("cursor", "pointer")
@@ -304,7 +388,24 @@ function highlightColumn(g, year) {
     .duration(150)
     .style("opacity", function () {
       const d = d3.select(this).datum();
-      return (year === null || d.data.year === year) ? 1 : 0.3;
+      const rowYear = d && d.data ? d.data.year : (d && d.year);
+      return (year === null || rowYear === year) ? 1 : 0.3;
+    });
+
+  g.selectAll("text.total")
+    .transition()
+    .duration(150)
+    .style("opacity", function () {
+      const d = d3.select(this).datum();
+      return (year === null || (d && d.year === year)) ? 1 : 0.3;
+    });
+
+  g.selectAll("text.label")
+    .transition()
+    .duration(150)
+    .style("opacity", function () {
+      const d = d3.select(this).datum();
+      return (year === null || (d && d.year === year)) ? 1 : 0.3;
     });
 
   g.selectAll(".segval")
@@ -341,7 +442,7 @@ function drawChart() {
       .attr("transform", `translate(${layout.margin.left}, ${layout.margin.top})`);
 
     drawColumns(g, data, scales, layout, isMobile);
-    attachHoverArea(g, data, scales.x, layout);
+    attachHoverArea(g, data, scales.x0, layout);
 
     drawLegend();
   });

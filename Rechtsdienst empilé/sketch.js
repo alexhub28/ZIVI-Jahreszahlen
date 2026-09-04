@@ -499,6 +499,17 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
     const internText = `(${formatSwiss(d[s.internKey])})`;
     const delay = i * 90 + si * 60 + SEGMENT_DURATION + 100;
 
+    // Le texte est pose sur fond colore (le segment lui-meme, ou le badge
+    // plein derriere quand le segment est trop bas) : #111/#888 (prevus
+    // pour un fond blanc) restent lisibles sur le segment Art73_74 (petrol
+    // a 50%, donc tres clair une fois melange au blanc), mais le texte
+    // gris (#888) devient quasi invisible sur Art76 (petrol a 100%, fond
+    // sombre) et sur le badge (toujours en petrol opaque). Fond sombre ->
+    // texte clair.
+    const onDarkBg = !inside || s.opacity >= 0.9;
+    const mainColor = onDarkBg ? "#ffffff" : "#111";
+    const internColor = onDarkBg ? "#d7e6e8" : "#888";
+
     const group = g.append("g")
       .attr("class", `segval seg-${s.key}`)
       .style("opacity", 0)
@@ -521,7 +532,7 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
       .style("font-family", "Arial")
       .style("font-size", fontSize + "px")
       .style("font-weight", "normal")
-      .style("fill", "#111")
+      .style("fill", mainColor)
       .text(mainText);
 
     group.append("text")
@@ -531,7 +542,7 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
       .attr("dominant-baseline", "middle")
       .style("font-family", "Arial")
       .style("font-size", (fontSize - 1.5) + "px")
-      .style("fill", "#888")
+      .style("fill", internColor)
       .text(internText);
   });
 }

@@ -472,10 +472,14 @@ function drawLabelBadge(container, text, cx, cy, fontSize) {
     .attr("stroke-width", 1);
 }
 
-// Valeur par segment de la colonne empilée, masquée par défaut,
-// révélée au survol de l'année (cf. highlightColumn()). Quand un
-// segment est trop bas pour porter le texte lisiblement, un badge
-// plein (petrol opaque) est ajouté derrière.
+// Valeur par segment de la colonne empilée (Art. 73/74 et Art. 76,
+// les deux parties en petrol), toujours visible - meme principe que
+// value-main / value-intern pour les colonnes simples : principale +
+// valeur interne entre parentheses. Comme les autres etiquettes du
+// graphique, elle se dimme (pas ne disparait pas) quand une autre
+// annee est survolee (cf. highlightColumn()). Quand un segment est
+// trop bas pour porter le texte lisiblement, un badge plein (petrol
+// opaque) est ajoute derriere.
 function drawComboSegmentLabels(g, d, i, scales, isMobile) {
   const { x0, x1, y, stackedSeries } = scales;
   const comboX = x0(d.year) + x1("combo");
@@ -493,11 +497,17 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
     const labelY = (segTop + segBottom) / 2;
     const mainText = formatSwiss(d[s.key]);
     const internText = `(${formatSwiss(d[s.internKey])})`;
+    const delay = i * 90 + si * 60 + SEGMENT_DURATION + 100;
 
     const group = g.append("g")
       .attr("class", `segval seg-${s.key}`)
       .style("opacity", 0)
       .datum(d);
+
+    group.transition()
+      .delay(delay)
+      .duration(300)
+      .style("opacity", 1);
 
     if (!inside) {
       drawLabelBadge(group, mainText.length >= internText.length ? mainText : internText, labelX, labelY, fontSize);
@@ -621,7 +631,7 @@ function highlightColumn(g, year, hoverDot, data, scales) {
     .duration(150)
     .style("opacity", function () {
       const d = d3.select(this).datum();
-      return (year !== null && d.year === year) ? 1 : 0;
+      return (year === null || (d && d.year === year)) ? 1 : 0.3;
     });
 
   if (year === null) {

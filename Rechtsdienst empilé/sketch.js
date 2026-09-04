@@ -461,5 +461,10 @@ function init() {
   drawChart();
 }
 
-init();
+// index.html charge ce script dans le <head> sans "defer" (comme
+// Rechtsdienst/index.html, dont il est le miroir) : le DOM du <body>
+// (#chart, #legend...) n'existe pas encore au moment ou ce fichier
+// s'execute, donc init() doit attendre DOMContentLoaded plutot que
+// de s'appeler directement ici.
+document.addEventListener("DOMContentLoaded", init);
 window.addEventListener("resize", drawChart);

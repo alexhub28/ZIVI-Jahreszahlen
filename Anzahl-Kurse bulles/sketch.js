@@ -16,10 +16,24 @@ const BASE_PETROL = "#5A959D";
 const DATA_FILE = "EAZ_Anzahl_Kurse.csv";
 const MOBILE_BREAKPOINT = 600;
 
-// Empaquetage des bulles (d3.pack) : l'aire de chaque bulle est
-// proportionnelle au nombre de cours de son annee (meme logique que
-// l'ancien treemap, juste des cercles a la place des carres).
-const PACK_PADDING = 8;
+// Positionnement le long d'un axe x (une bulle par annee, alignee sur
+// sa position sur l'axe) plutot qu'un empaquetage libre (d3.pack) :
+// l'aire de chaque bulle reste proportionnelle au nombre de cours de
+// son annee (meme logique qu'avant), mais son centre x correspond
+// desormais a l'annee, toutes les bulles reposant sur la meme ligne de
+// base au-dessus de l'axe.
+const MAX_RADIUS_DESKTOP = 50;
+const MAX_RADIUS_MOBILE = 34;
+const MIN_RADIUS = 4;
+
+// Fraction du demi-intervalle entre deux annees consecutives que le
+// rayon maximal peut occuper : reserve toujours un espace visible entre
+// deux bulles voisines, meme si elles sont toutes les deux au rayon max.
+const BUBBLE_GUTTER = 0.86;
+
+// Espace vertical entre le bas de la plus grande bulle possible et la
+// ligne de l'axe x.
+const AXIS_GAP = 14;
 
 // Legere oscillation continue des bulles ("respiration"), une fois leur
 // apparition terminee. BUBBLE_PULSE_SCALE est un ecart proportionnel
@@ -62,13 +76,59 @@ function formatSwiss(n) {
 }
 
 // ============================================================
-// Empaquetage
+// Mise en page (positions le long de l'axe x) + axe
 // ============================================================
 
-function buildPackedNodes(data, width, height) {
-  const root = d3.hierarchy({ children: data }).sum(d => d.value);
-  d3.pack().size([width, height]).padding(PACK_PADDING)(root);
-  return root.leaves();
+// Construit la mise en page : position x de chaque annee sur l'axe,
+// rayon de sa bulle (aire proportionnelle a la valeur), et la hauteur
+// totale du panneau necessaire (dependante du rayon max effectif).
+function buildTimelineLayout(data, containerWidth, isMobile) {
+  const maxValue = d3.max(data, d => d.value);
+  const nominalMaxR = isMobile ? MAX_RADIUS_MOBILE : MAX_RADIUS_DESKTOP;
+
+  // Marges laterales : assez larges pour que la premiere/derniere bulle
+  // (au rayon nominal max) ne soit jamais rognee par le bord du panneau.
+  const sidePad = nominalMaxR + (isMobile ? 8 : 12);
+  const margin = {
+    top: isMobile ? 14 : 18,
+    left: sidePad,
+    right: sidePad,
+    bottom: isMobile ? 30 : 34
+  };
+  const innerWidth = Math.max(0, containerWidth - margin.left - margin.right);
+
+  const x = d3.scalePoint()
+    .domain(data.map(d => d.year))
+    .range([0, innerWidth]);
+
+  const step = data.length > 1 ? innerWidth / (data.length - 1) : innerWidth;
+  const maxR = Math.max(MIN_RADIUS, Math.min(nominalMaxR, (step / 2) * BUBBLE_GUTTER));
+
+  const r = d3.scaleSqrt().domain([0, maxValue]).range([MIN_RADIUS, maxR]);
+
+  const bubbleY = margin.top + maxR;
+  const axisY = bubbleY + maxR + AXIS_GAP;
+  const height = axisY + margin.bottom;
+
+  const nodes = data.map(d => ({
+    data: d,
+    x: margin.left + x(d.year),
+    y: bubbleY,
+    r: r(d.value)
+  }));
+
+  return { nodes, x, margin, height, axisY };
+}
+
+// --- Axe X : une graduation par annee, alignee sur la position des bulles ---
+function drawXAxis(svg, x, margin, axisY, isMobile) {
+  svg.append("g")
+    .attr("transform", `translate(${margin.left}, ${axisY})`)
+    .call(d3.axisBottom(x).tickSizeOuter(0))
+    .selectAll("text")
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "9px" : "10px")
+    .style("fill", "#555");
 }
 
 function getFillColor() {
@@ -240,23 +300,26 @@ function drawChart() {
 
   const containerWidth = document.getElementById("chart").clientWidth;
   const isMobile = containerWidth < MOBILE_BREAKPOINT;
-  const panelHeight = isMobile ? 340 : 440;
-
-  const svg = d3.select("#chart")
-    .append("svg")
-    .attr("width", containerWidth)
-    .attr("height", panelHeight);
 
   d3.csv(DATA_FILE).then(raw => {
 
-    const data = raw.map(d => ({
-      year: d["Jahr"],
-      value: +d["Anzahl_Ausbildungskurse"]
-    }));
+    const data = raw
+      .map(d => ({
+        year: d["Jahr"],
+        value: +d["Anzahl_Ausbildungskurse"]
+      }))
+      .sort((a, b) => a.year - b.year);
 
-    const nodes = buildPackedNodes(data, containerWidth, panelHeight);
+    const layout = buildTimelineLayout(data, containerWidth, isMobile);
+
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("width", containerWidth)
+      .attr("height", layout.height);
+
+    drawXAxis(svg, layout.x, layout.margin, layout.axisY, isMobile);
 
     const tooltip = createTooltip(svg);
-    drawBubbles(svg, nodes, isMobile, tooltip);
+    drawBubbles(svg, layout.nodes, isMobile, tooltip);
   });
 }

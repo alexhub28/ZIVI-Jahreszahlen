@@ -1,8 +1,3 @@
-// Script D3 pur : aucune dépendance à p5.js. index.html ne charge que
-// D3, et ce fichier n'utilise ni noCanvas() ni setup() ni draw() -
-// voir tout en bas du fichier pour le point d'entrée (drawChart()
-// appelé directement, sans passer par un cycle de vie p5).
-
 // ============================================================
 // Configuration
 // ============================================================
@@ -14,7 +9,7 @@ const titleLookup = {
 };
 
 // Une seule langue affichee a la fois (selon ?lang=), jamais les trois
-// versions ensemble - ni dans la legende, ni dans le tooltip.
+// versions ensemble - ni dans la legende, ni ailleurs.
 const legendLookup = {
   de: [
     { key: "betriebe", text: "Einsatzbetriebe" },
@@ -30,379 +25,49 @@ const legendLookup = {
   ]
 };
 
+// Graphique a 2 variables : petrol (Einsatzbetriebe) + lila
+// (Einsatzplätze), couleurs unies (pas de degrade) - meme paire que le
+// graphique a barres groupees, pour rester coherent visuellement entre
+// les differentes versions du meme jeu de donnees.
+const BASE_BETRIEBE = "#5A959D"; // accent1 - petrol
+const BASE_PLAETZE = "#A3A8CA";  // accent3 - lila
+
+const MOBILE_BREAKPOINT = 600;
+
+// Largeur maximale de la colonne centrale (noms de domaine) : au-dela,
+// on passe a deux lignes plutot que de rogner l'espace des deux
+// panneaux de barres (utile en francais/italien, ou certains noms de
+// domaine sont tres longs).
+const CENTER_LABEL_MAX_DESKTOP = 230;
+const CENTER_LABEL_MAX_MOBILE = 150;
+
+// Marge minimum au bord exterieur de chaque panneau, pour l'etiquette
+// de valeur affichee juste apres le bout de la barre.
+const OUTER_VALUE_MARGIN_DESKTOP = 58;
+const OUTER_VALUE_MARGIN_MOBILE = 46;
+
+// Largeur plancher : une valeur non nulle reste toujours visible, meme
+// minuscule a cette echelle (ex. Katastrophen : 11 etablissements).
+const MIN_BAR_WIDTH = 2;
+
+const VALUE_GAP = 6;
+
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
+
+// ============================================================
+// URL params (remplace p5.getURLParams, non utilise autrement ici)
+// ============================================================
 
 function getURLParams() {
   const params = new URLSearchParams(window.location.search);
   return Object.fromEntries(params.entries());
 }
 
-// Graphique à 2 variables : petrol (Einsatzbetriebe) + lila
-// (Einsatzplätze), couleurs unies (pas de dégradé) - même paire que le
-// graphique à barres groupées, pour rester cohérent visuellement entre
-// les deux versions du même jeu de données.
-const BASE_BETRIEBE = "#5A959D";   // accent1 - petrol
-const BASE_PLAETZE = "#A3A8CA";    // accent3 - lila
-// STROKE_PLAETZE sert uniquement au contour de l'info-bulle (cf.
-// createTooltip).
-const STROKE_PLAETZE = "#7B81AC";  // contour, plus soutenu que BASE_PLAETZE
-
-// Un CSV par langue (data_de.csv / data_fr.csv / data_it.csv), chacun
-// deja dans une seule langue - fini le split(" / ") sur le label.
-function dataFile() {
-  return "data_" + currentLang + ".csv";
-}
-const MOBILE_BREAKPOINT = 600;
-
-// Empaquetage des bulles (d3.pack) : la taille de chaque bulle est
-// proportionnelle au nombre de places d'affectation (Einsatzplätze),
-// toujours supérieur au nombre d'établissements pour un même domaine.
-const PACK_PADDING = 10;        // espace minimum entre deux bulles
-const MIN_INNER_RADIUS = 14;    // assez grand pour que son chiffre reste lisible
-const MAX_INNER_RATIO = 0.88;   // le jaune ne recouvre jamais tout à fait le lila
-
-const TOOLTIP_PAD_X = 10;
-const TOOLTIP_PAD_Y = 8;
-
-// Légère oscillation continue des bulles ("respiration"), une fois leur
-// apparition terminée. BUBBLE_PULSE_SCALE est un écart proportionnel
-// (0.025 = +/-2.5%), volontairement modeste pour ne jamais empiéter sur
-// les bulles voisines malgré l'empaquetage serré.
-const BUBBLE_PULSE_SCALE = 0.025;
-const BUBBLE_PULSE_DURATION = 2000;
-
 // ============================================================
-// Data
+// Init & resize (remplace les hooks de cycle de vie p5)
 // ============================================================
 
-function parseData(raw) {
-  return raw.map(d => ({
-    label: d["Tätigkeit"],
-    betriebe: +d["Einsatzbetriebe"],
-    plaetze: +d["Einsatzplätze"]
-  }));
-}
-
-// Formatage suisse : 8'344
-function formatSwiss(n) {
-  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
-}
-
-// ============================================================
-// Layout & empaquetage
-// ============================================================
-
-function computeLayout(containerWidth, isMobile) {
-  const margin = { top: 0, right: 10, bottom: 10, left: 10 };
-  const legendHeight = isMobile ? 44 : 38; // agrandi avec le texte de la legende
-  const packWidth = containerWidth - margin.left - margin.right;
-  const packHeight = isMobile ? Math.round(packWidth * 0.85) : Math.round(packWidth * 0.6);
-  const width = containerWidth;
-  const height = legendHeight + packHeight + margin.top + margin.bottom;
-
-  return { margin, legendHeight, packWidth, packHeight, width, height };
-}
-
-function buildPackedNodes(data, packWidth, packHeight) {
-  const root = d3.hierarchy({ children: data }).sum(d => d.plaetze || 0);
-  d3.pack().size([packWidth, packHeight]).padding(PACK_PADDING)(root);
-  return root.leaves();
-}
-
-// Rayon du cercle jaune (Einsatzbetriebe), à l'échelle de SA PROPRE
-// bulle : proportionnel à la racine carrée du rapport betriebe/plaetze
-// de ce domaine précis, pas à une échelle globale entre les bulles.
-function computeInnerRadius(node) {
-  const ratio = Math.sqrt(node.data.betriebe / node.data.plaetze);
-  const cappedRatio = Math.min(ratio, MAX_INNER_RATIO);
-  return Math.max(node.r * cappedRatio, MIN_INNER_RADIUS);
-}
-
-// Fait osciller doucement un groupe entre deux échelles (scale), en
-// va-et-vient infini. Le délai initial permet d'attendre la fin de
-// l'animation d'entrée de la bulle avant de démarrer la respiration.
-function pulseLoop(selection, minScale, maxScale, duration, initialDelay) {
-  function cycle() {
-    selection
-      .transition()
-      .duration(duration)
-      .ease(d3.easeSinInOut)
-      .attr("transform", `scale(${maxScale})`)
-      .transition()
-      .duration(duration)
-      .ease(d3.easeSinInOut)
-      .attr("transform", `scale(${minScale})`)
-      .on("end", cycle);
-  }
-
-  selection.transition().delay(initialDelay).on("end", cycle);
-}
-
-// ============================================================
-// Légende
-// ============================================================
-
-function drawLegend(svg, isMobile) {
-  const legend = svg.append("g").attr("transform", "translate(0, 8)");
-
-  const colorByKey = { betriebe: BASE_BETRIEBE, plaetze: BASE_PLAETZE };
-  const legendItems = legendLookup[currentLang];
-
-  legendItems.forEach((item, i) => {
-    const row = legend.append("g").attr("transform", `translate(0, ${i * 20})`);
-
-    row.append("rect")
-      .attr("width", 11)
-      .attr("height", 11)
-      .attr("y", 2)
-      .attr("fill", colorByKey[item.key]);
-
-    row.append("text")
-      .attr("x", 17)
-      .attr("y", 11)
-      .style("font-family", "Arial")
-      .style("font-size", isMobile ? "11.5px" : "13px")
-      .style("fill", "#111")
-      .text(item.text);
-  });
-}
-
-// ============================================================
-// Bulles
-// ============================================================
-
-// Cercle extérieur (lila = Einsatzplätze) : détermine la taille
-// globale de la bulle, avec animation d'apparition.
-function drawOuterCircle(pulse) {
-  pulse.append("circle")
-    .attr("class", "outer")
-    .attr("r", 0)
-    .attr("fill", BASE_PLAETZE)
-    .transition()
-    .delay((d, i) => i * 90)
-    .duration(700)
-    .ease(d3.easeCubicOut)
-    .attr("r", d => d.r);
-}
-
-// Cercle intérieur (jaune = Einsatzbetriebe), imbriqué dans le lila.
-function drawInnerCircle(pulse) {
-  pulse.append("circle")
-    .attr("class", "inner")
-    .attr("r", 0)
-    .attr("fill", BASE_BETRIEBE)
-    .transition()
-    .delay((d, i) => i * 90 + 250)
-    .duration(500)
-    .ease(d3.easeCubicOut)
-    .attr("r", d => computeInnerRadius(d));
-}
-
-function drawValueLabels(pulse, isMobile) {
-  // Nombre de places d'affectation : seule information visible avant
-  // le survol (le nom du domaine n'apparaît qu'au survol, cf.
-  // showTooltip). Placé dans l'anneau lila resté visible, entre le
-  // bord du cercle jaune et celui du cercle lila.
-  pulse.append("text")
-    .attr("class", "value")
-    .attr("y", d => -(computeInnerRadius(d) + d.r) / 2)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
-    .style("font-family", "Arial")
-    .style("font-size", isMobile ? "10px" : "11.5px")
-    .style("font-weight", "normal")
-    .style("fill", "#1a1a3a")
-    .style("opacity", 0)
-    .text(d => formatSwiss(d.data.plaetze))
-    .transition()
-    .delay((d, i) => i * 90 + 550)
-    .duration(300)
-    .style("opacity", 1);
-
-  // Nombre d'établissements d'affectation : centré dans le cercle
-  // jaune, également visible en permanence (comme le nombre de places
-  // ci-dessus).
-  pulse.append("text")
-    .attr("class", "value")
-    .attr("y", 0)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
-    .style("font-family", "Arial")
-    .style("font-size", isMobile ? "9px" : "10.5px")
-    .style("font-weight", "normal")
-    .style("fill", "#1a1a3a")
-    .style("opacity", 0)
-    .text(d => formatSwiss(d.data.betriebe))
-    .transition()
-    .delay((d, i) => i * 90 + 650)
-    .duration(300)
-    .style("opacity", 1);
-}
-
-// Légère oscillation continue, une fois l'apparition terminée : un
-// discret effet de respiration (grossissement/rétrécissement autour
-// du centre de la bulle), sans jamais déplacer son centre — ce qui
-// garantit qu'elle ne vient jamais empiéter sur ses voisines.
-function attachPulse(bubble) {
-  bubble.each(function (d, i) {
-    pulseLoop(
-      d3.select(this).select("g.pulse"),
-      1 - BUBBLE_PULSE_SCALE,
-      1 + BUBBLE_PULSE_SCALE,
-      BUBBLE_PULSE_DURATION + i * 70,
-      i * 90 + 900
-    );
-  });
-}
-
-function drawBubbles(g, nodes, isMobile) {
-  const bubble = g.selectAll("g.bubble")
-    .data(nodes)
-    .enter()
-    .append("g")
-    .attr("class", "bubble")
-    .attr("transform", d => `translate(${d.x}, ${d.y})`);
-
-  // Groupe interne, pour appliquer l'oscillation (pulseLoop, plus bas)
-  // par un simple scale centré sur la bulle elle-même — jamais une
-  // translation, qui risquerait de faire chevaucher les bulles voisines
-  // dans cet empaquetage serré.
-  const pulse = bubble.append("g").attr("class", "pulse");
-
-  drawOuterCircle(pulse);
-  drawInnerCircle(pulse);
-  drawValueLabels(pulse, isMobile);
-  attachPulse(bubble);
-
-  return bubble;
-}
-
-// ============================================================
-// Info-bulle (nom du domaine, révélé au survol)
-// ============================================================
-
-function createTooltip(svg) {
-  const tooltip = svg.append("g")
-    .style("opacity", 0)
-    .style("pointer-events", "none");
-
-  const tooltipRect = tooltip.append("rect")
-    .attr("fill", "white")
-    .attr("stroke", STROKE_PLAETZE)
-    .attr("stroke-width", 1.5)
-    .attr("rx", 5);
-
-  const tooltipText = tooltip.append("text")
-    .style("font-family", "Arial")
-    .style("font-size", "12.5px")
-    .style("fill", "#111");
-
-  return { tooltip, tooltipRect, tooltipText };
-}
-
-function fillTooltipText(tooltipText, node) {
-  // data_<lang>.csv ne contient deja plus qu'une seule langue : une
-  // seule ligne de texte, jamais les trois versions empilees.
-  tooltipText.selectAll("tspan").remove();
-  tooltipText.attr("x", TOOLTIP_PAD_X).attr("y", 0);
-
-  tooltipText.append("tspan")
-    .attr("x", TOOLTIP_PAD_X)
-    .attr("dy", 0)
-    .style("font-weight", "normal")
-    .text(node.data.label);
-}
-
-function positionTooltip(tooltipParts, mx, my, chartWidth) {
-  const { tooltip, tooltipRect, tooltipText } = tooltipParts;
-  const bbox = tooltipText.node().getBBox();
-  const boxWidth = bbox.width + TOOLTIP_PAD_X * 2;
-  const boxHeight = bbox.height + TOOLTIP_PAD_Y * 2;
-
-  let tx = mx + 16;
-  let ty = my - boxHeight - 14;
-  if (tx + boxWidth > chartWidth) tx = mx - boxWidth - 16;
-  if (ty < 0) ty = my + 16;
-
-  tooltip.attr("transform", `translate(${tx}, ${ty})`);
-  tooltipRect.attr("width", boxWidth).attr("height", boxHeight);
-  tooltipText.attr("y", TOOLTIP_PAD_Y - bbox.y);
-  tooltip.style("opacity", 1);
-}
-
-function showTooltip(event, node, tooltipParts, svg, chartWidth) {
-  const [mx, my] = d3.pointer(event, svg.node());
-  fillTooltipText(tooltipParts.tooltipText, node);
-  positionTooltip(tooltipParts, mx, my, chartWidth);
-}
-
-function hideTooltip(tooltipParts) {
-  tooltipParts.tooltip.style("opacity", 0);
-}
-
-// ============================================================
-// Interaction
-// ============================================================
-
-function highlightBubble(bubble, hoveredNode) {
-  bubble
-    .transition()
-    .duration(150)
-    .style("opacity", d => (hoveredNode === null || d === hoveredNode) ? 1 : 0.35);
-}
-
-function attachHover(bubble, tooltipParts, svg, chartWidth) {
-  bubble
-    .style("cursor", "pointer")
-    .on("mouseover", function (event, d) {
-      highlightBubble(bubble, d);
-      showTooltip(event, d, tooltipParts, svg, chartWidth);
-    })
-    .on("mousemove", (event, d) => showTooltip(event, d, tooltipParts, svg, chartWidth))
-    .on("mouseout", function () {
-      highlightBubble(bubble, null);
-      hideTooltip(tooltipParts);
-    });
-}
-
-// ============================================================
-// Orchestration
-// ============================================================
-
-function drawChart() {
-  d3.select("#chart").selectAll("*").remove();
-
-  const containerWidth = document.getElementById("chart").clientWidth;
-  const isMobile = containerWidth < MOBILE_BREAKPOINT;
-
-  d3.csv(dataFile()).then(raw => {
-    const data = parseData(raw);
-    const layout = computeLayout(containerWidth, isMobile);
-    const nodes = buildPackedNodes(data, layout.packWidth, layout.packHeight);
-
-    const svg = d3.select("#chart")
-      .append("svg")
-      .attr("width", layout.width)
-      .attr("height", layout.height);
-
-    drawLegend(svg, isMobile);
-
-    const g = svg.append("g")
-      .attr("transform", `translate(${layout.margin.left}, ${layout.legendHeight})`);
-
-    const bubble = drawBubbles(g, nodes, isMobile);
-    const tooltipParts = createTooltip(svg);
-    attachHover(bubble, tooltipParts, svg, layout.width);
-  });
-}
-
-// ============================================================
-// Entry point
-// ============================================================
-
-// Script D3 pur (pas de p5) : charge en "defer" dans index.html, donc
-// le DOM est déjà prêt quand ce code s'exécute.
 function init() {
   const params = getURLParams();
   currentLang = params.lang || currentLang;
@@ -412,5 +77,332 @@ function init() {
   drawChart();
 }
 
-init();
+document.addEventListener("DOMContentLoaded", init);
 window.addEventListener("resize", drawChart);
+
+// --- Formatage suisse : 8'344 ---
+function formatSwiss(n) {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+}
+
+// ============================================================
+// Mesure de texte (colonne centrale + legende)
+// ============================================================
+
+function measureTextWidth(svg, text, fontSize) {
+  const probe = svg.append("text")
+    .style("font-family", "Arial")
+    .style("font-size", fontSize)
+    .style("opacity", 0)
+    .text(text);
+  const w = probe.node().getComputedTextLength();
+  probe.remove();
+  return w;
+}
+
+// Decoupe un nom de domaine en 1 ou 2 lignes pour tenir dans
+// maxWidth : ajoute les mots un a un tant que la ligne courante tient,
+// sinon passe a la ligne suivante. Au-dela de 2 lignes, le reste est
+// simplement regroupe sur la deuxieme (la hauteur de ligne des lignes
+// est fixe par rowHeight, pas la peine d'aller plus loin ici).
+function wrapLabelLines(svg, label, maxWidth, fontSize) {
+  const words = label.split(" ");
+  const probe = svg.append("text")
+    .style("font-family", "Arial")
+    .style("font-size", fontSize)
+    .style("opacity", 0);
+
+  const lines = [];
+  let current = "";
+
+  words.forEach(word => {
+    const candidate = current ? current + " " + word : word;
+    probe.text(candidate);
+    const w = probe.node().getComputedTextLength();
+    if (w > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  });
+  if (current) lines.push(current);
+
+  probe.remove();
+
+  if (lines.length <= 2) return lines;
+  return [lines[0], lines.slice(1).join(" ")];
+}
+
+// ============================================================
+// Légende — un item centré au-dessus de chaque panneau (comme les deux
+// colonnes de barres qu'il annonce), plutôt qu'empilée à gauche.
+// ============================================================
+
+function drawLegendItem(svg, cx, y, color, label, fontSize) {
+  const textWidth = measureTextWidth(svg, label, fontSize);
+  const swatchSize = 11;
+  const gap = 6;
+  const totalWidth = swatchSize + gap + textWidth;
+  const startX = cx - totalWidth / 2;
+
+  const item = svg.append("g").attr("transform", `translate(${startX}, ${y})`);
+
+  item.append("rect")
+    .attr("width", swatchSize)
+    .attr("height", swatchSize)
+    .attr("y", 1)
+    .attr("fill", color);
+
+  item.append("text")
+    .attr("x", swatchSize + gap)
+    .attr("y", swatchSize)
+    .style("font-family", "Arial")
+    .style("font-size", fontSize)
+    .style("fill", "#111")
+    .text(label);
+}
+
+// ============================================================
+// Barres (miroir) + étiquettes de valeur
+// ============================================================
+
+function drawSideBars(g, data, y0, valueScale, panelWidth, color, key, side, isMobile) {
+  const barWidth = val => val > 0 ? Math.max(valueScale(val), MIN_BAR_WIDTH) : 0;
+  const barX = val => side === "left" ? panelWidth - barWidth(val) : 0;
+
+  // Départ de l'animation d'apparition : un rectangle/texte de largeur
+  // nulle posé exactement au bord touchant la colonne des noms (à
+  // droite du panneau gauche, à gauche du panneau droit), pour que les
+  // deux côtés grandissent bien depuis le centre vers l'extérieur.
+  const startX = side === "left" ? panelWidth : 0;
+
+  g.selectAll(`rect.bar-${key}`)
+    .data(data)
+    .enter()
+    .append("rect")
+    .attr("class", `bar bar-${key}`)
+    .attr("y", d => y0(d.label))
+    .attr("height", y0.bandwidth())
+    .attr("width", 0)
+    .attr("x", startX)
+    .attr("fill", color)
+    .transition()
+    .delay((d, i) => i * 90)
+    .duration(800)
+    .ease(d3.easeCubicOut)
+    .attr("x", d => barX(d[key]))
+    .attr("width", d => barWidth(d[key]));
+
+  g.selectAll(`text.value-${key}`)
+    .data(data)
+    .enter()
+    .append("text")
+    .attr("class", `value value-${key}`)
+    .attr("x", startX)
+    .attr("y", d => y0(d.label) + y0.bandwidth() / 2)
+    .attr("text-anchor", side === "left" ? "end" : "start")
+    .attr("dominant-baseline", "middle")
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "9.5px" : "10.5px")
+    .style("font-weight", "normal")
+    .style("fill", "#111")
+    .text("0")
+    .transition()
+    .delay((d, i) => i * 90)
+    .duration(800)
+    .ease(d3.easeCubicOut)
+    .attr("x", d => side === "left"
+      ? barX(d[key]) - VALUE_GAP
+      : barX(d[key]) + barWidth(d[key]) + VALUE_GAP)
+    .textTween(function (d) {
+      const iVal = d3.interpolateNumber(0, d[key]);
+      return t => formatSwiss(iVal(t));
+    });
+}
+
+// ============================================================
+// Axe (miroir) — même échelle des deux côtés, ticks qui grandissent en
+// s'éloignant du centre.
+// ============================================================
+
+function drawSideAxis(g, scale, panelWidth, innerHeight, isMobile) {
+  const tickCount = isMobile ? 3 : 4;
+  const clampedTicks = scale.ticks(tickCount).filter(v => {
+    const x = scale(v);
+    return x >= -0.5 && x <= panelWidth + 0.5;
+  });
+
+  g.append("g")
+    .attr("transform", `translate(0, ${innerHeight})`)
+    .call(
+      d3.axisBottom(scale)
+        .tickValues(clampedTicks)
+        .tickFormat(d => formatSwiss(d))
+        .tickSizeOuter(0)
+    )
+    .selectAll("text")
+    .style("font-family", "Arial")
+    .style("font-size", isMobile ? "8.5px" : "9.5px")
+    .style("fill", "#555");
+}
+
+// ============================================================
+// Colonne centrale (noms de domaine)
+// ============================================================
+
+function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg) {
+  const fontSize = isMobile ? "9.5px" : "10.5px";
+  const maxTextWidth = centerLabelWidth - 16;
+  const lineHeight = 1.15; // em
+
+  const labelLines = new Map(data.map(d => [d, wrapLabelLines(svg, d.label, maxTextWidth, fontSize)]));
+
+  const texts = g.selectAll("text.domain-label")
+    .data(data)
+    .enter()
+    .append("text")
+    .attr("class", "domain-label")
+    .attr("x", centerLabelWidth / 2)
+    .attr("y", d => y0(d.label) + y0.bandwidth() / 2)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .style("font-family", "Arial")
+    .style("font-weight", "normal")
+    .style("fill", "#333")
+    .style("font-size", fontSize);
+
+  texts.each(function (d) {
+    const lines = labelLines.get(d);
+    const startDy = -((lines.length - 1) / 2) * lineHeight;
+    d3.select(this).selectAll("tspan")
+      .data(lines)
+      .enter()
+      .append("tspan")
+      .attr("x", centerLabelWidth / 2)
+      .attr("dy", (line, i) => (i === 0 ? startDy : lineHeight) + "em")
+      .text(line);
+  });
+
+  return texts;
+}
+
+// ============================================================
+// Survol : met en évidence une ligne (les deux barres + le nom),
+// quel que soit le groupe (gauche / centre / droite) dans lequel
+// l'élément survolé se trouve réellement.
+// ============================================================
+
+function highlight(svg, label) {
+  svg.selectAll(".bar, .value")
+    .transition().duration(150)
+    .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3);
+
+  svg.selectAll(".domain-label")
+    .transition().duration(150)
+    .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3)
+    .style("font-weight", d => (label !== null && d.label === label) ? "bold" : "normal")
+    .style("fill", d => (label !== null && d.label === label) ? "#000" : "#333");
+}
+
+function attachHover(svg, data, y0, hitOffsetX, hitWidth, hitOffsetY) {
+  svg.selectAll("rect.hit")
+    .data(data)
+    .enter()
+    .append("rect")
+    .attr("class", "hit")
+    .attr("x", hitOffsetX)
+    .attr("y", d => hitOffsetY + y0(d.label) - (y0.step() - y0.bandwidth()) / 2)
+    .attr("width", hitWidth)
+    .attr("height", y0.step())
+    .attr("fill", "transparent")
+    .style("cursor", "pointer")
+    .on("mouseover", (event, d) => highlight(svg, d.label))
+    .on("mouseout", () => highlight(svg, null));
+}
+
+// ============================================================
+// Orchestration
+// ============================================================
+
+function drawChart() {
+
+  d3.select("#chart").selectAll("*").remove();
+
+  const containerWidth = document.getElementById("chart").clientWidth;
+  const isMobile = containerWidth < MOBILE_BREAKPOINT;
+
+  d3.csv("data_" + currentLang + ".csv").then(raw => {
+
+    const data = raw.map(d => ({
+      label: d["Tätigkeit"],
+      betriebe: +d["Einsatzbetriebe"],
+      plaetze: +d["Einsatzplätze"]
+    }));
+
+    // Ordre décroissant par nombre de places d'affectation (Einsatzplätze)
+    // — même tri que le graphique à barres groupées du même jeu de données.
+    data.sort((a, b) => b.plaetze - a.plaetze);
+
+    const rowHeight = isMobile ? 42 : 48;
+    const legendHeight = isMobile ? 30 : 32;
+    const margin = {
+      top: legendHeight + 12,
+      bottom: 24
+    };
+
+    const innerHeight = data.length * rowHeight;
+    const height = margin.top + innerHeight + margin.bottom;
+
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("width", containerWidth)
+      .attr("height", height);
+
+    // --- Colonne centrale : dimensionnée sur le nom de domaine le plus
+    // long (mesuré), plafonnée pour laisser assez de place aux deux
+    // panneaux de barres — au-delà, les noms passent sur deux lignes.
+    const centerFontSize = isMobile ? "9.5px" : "10.5px";
+    const centerLabelCap = isMobile ? CENTER_LABEL_MAX_MOBILE : CENTER_LABEL_MAX_DESKTOP;
+    const rawMaxLabelWidth = d3.max(data, d => measureTextWidth(svg, d.label, centerFontSize));
+    const centerLabelWidth = Math.min(centerLabelCap, rawMaxLabelWidth + 16);
+
+    const outerValueMargin = isMobile ? OUTER_VALUE_MARGIN_MOBILE : OUTER_VALUE_MARGIN_DESKTOP;
+    const panelWidth = Math.max(70, (containerWidth - centerLabelWidth - outerValueMargin * 2) / 2);
+
+    const maxBetriebe = d3.max(data, d => d.betriebe);
+    const maxPlaetze = d3.max(data, d => d.plaetze);
+    const maxVal = Math.max(maxBetriebe, maxPlaetze) * 1.12;
+
+    // Même échelle des deux côtés (même pixel par unité) : les longueurs
+    // de barre restent directement comparables entre établissements et
+    // places d'affectation, malgré le miroir.
+    const rightScale = d3.scaleLinear().domain([0, maxVal]).range([0, panelWidth]);
+    const leftScale = rightScale.copy().range([panelWidth, 0]);
+
+    const y0 = d3.scaleBand()
+      .domain(data.map(d => d.label))
+      .range([0, innerHeight])
+      .paddingInner(0.28)
+      .paddingOuter(0.14);
+
+    const leftX = outerValueMargin;
+    const centerX = outerValueMargin + panelWidth;
+    const rightX = outerValueMargin + panelWidth + centerLabelWidth;
+
+    drawLegendItem(svg, leftX + panelWidth / 2, 6, BASE_BETRIEBE, legendLookup[currentLang][0].text, isMobile ? "11px" : "12.5px");
+    drawLegendItem(svg, rightX + panelWidth / 2, 6, BASE_PLAETZE, legendLookup[currentLang][1].text, isMobile ? "11px" : "12.5px");
+
+    const gLeft = svg.append("g").attr("transform", `translate(${leftX}, ${margin.top})`);
+    const gCenter = svg.append("g").attr("transform", `translate(${centerX}, ${margin.top})`);
+    const gRight = svg.append("g").attr("transform", `translate(${rightX}, ${margin.top})`);
+
+    drawSideBars(gLeft, data, y0, leftScale, panelWidth, BASE_BETRIEBE, "betriebe", "left", isMobile);
+    drawSideBars(gRight, data, y0, rightScale, panelWidth, BASE_PLAETZE, "plaetze", "right", isMobile);
+    drawSideAxis(gLeft, leftScale, panelWidth, innerHeight, isMobile);
+    drawSideAxis(gRight, rightScale, panelWidth, innerHeight, isMobile);
+    drawCenterLabels(gCenter, data, y0, centerLabelWidth, isMobile, svg);
+
+    attachHover(svg, data, y0, leftX, panelWidth * 2 + centerLabelWidth, margin.top);
+  });
+}

@@ -207,9 +207,10 @@ function drawChart() {
       .attr("width", width)
       .attr("height", height);
 
-    // --- Légende — en haut, avant le graphique ---
+    // --- Légende — en haut, avant le graphique, alignée sur la colonne
+    // du graphique (comme EiB-pro-TB / Einsatzbetriebe und Einsatzplätze) ---
     const legend = svg.append("g")
-      .attr("transform", `translate(0, 6)`);
+      .attr("transform", `translate(${margin.left}, 6)`);
 
     [["2024", COLOR_2024], ["2025", COLOR_2025]].forEach(([yr, color], i) => {
       const row = legend.append("g").attr("transform", `translate(${i * 100}, 0)`);
@@ -239,9 +240,10 @@ function drawChart() {
 
     // Garde-fou : élargit le SVG si la légende d'unité déborde du
     // conteneur (silencieusement tronquée sinon, la largeur du SVG
-    // étant fixée à containerWidth).
+    // étant fixée à containerWidth). Le texte démarre à margin.left,
+    // pas à 0, d'où son ajout ici.
     const unitBBox = unitLegend.node().getBBox();
-    const requiredWidth = unitBBox.width + 20;
+    const requiredWidth = margin.left + unitBBox.width + 20;
     if (requiredWidth > width) {
       svg.attr("width", requiredWidth);
     }

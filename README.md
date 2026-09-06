@@ -12,9 +12,7 @@ Die Grafiken unterstützen drei Sprachen über einen URL-Parameter, z. B. `index
 
 ## Technologie
 
-Die Grafiken sind mit **D3.js** (Version 7) programmiert, einer JavaScript-Bibliothek, die auf Datenvisualisierung spezialisiert ist: Sie wandelt Zahlen (z. B. die Anzahl Diensttage pro Jahr) direkt in der Webseite in grafische Elemente um — Balken, Linien, Achsen —, inklusive Animationen.
-
-D3 wird hier als **„vanilla" JavaScript** eingesetzt, also als reines JavaScript ohne zusätzliches Framework (kein React, Vue o. Ä.) und ohne Kompilierschritt: D3 wird direkt über ein `<script>`-Tag von einem CDN geladen. Deshalb ist jede Grafik eine eigenständige Datei — es genügt, `index.html` im Browser zu öffnen.
+Die Grafiken sind mit D3.js (Version 7) programmiert, einer JavaScript-Bibliothek, die auf Datenvisualisierung spezialisiert ist: Sie wandelt Zahlen (z. B. die Anzahl Diensttage pro Jahr) direkt in der Webseite in grafische Elemente um — Balken, Linien, Achsen —, inklusive Animationen.
 
 ## Liste der Grafiken
 
@@ -54,9 +52,7 @@ Les graphiques supportent trois langues via un paramètre d'URL, par ex. `index.
 
 ## Technologie
 
-Les graphiques sont codés avec **D3.js** (version 7), une bibliothèque JavaScript spécialisée dans la visualisation de données : elle transforme des chiffres (par ex. le nombre de jours de service par année) directement dans la page web en éléments graphiques — barres, lignes, axes —, avec des animations.
-
-D3 est utilisé ici en **JavaScript « vanilla »**, c'est-à-dire du JavaScript pur, sans framework en plus (pas de React, Vue, etc.) et sans étape de compilation : D3 est chargé directement depuis un CDN via une balise `<script>`. C'est pour ça que chaque graphique est un fichier autonome — il suffit d'ouvrir `index.html` dans un navigateur.
+Les graphiques sont codés avec D3.js (version 7), une bibliothèque JavaScript spécialisée dans la visualisation de données : elle transforme des chiffres (par ex. le nombre de jours de service par année) directement dans la page web en éléments graphiques — barres, lignes, axes —, avec des animations.
 
 ## Liste des graphiques
 

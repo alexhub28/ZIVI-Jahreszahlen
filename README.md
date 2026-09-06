@@ -1,5 +1,9 @@
 # Jahreszahlen - Bundesamt für Zivildienst
 
+## Zweck
+
+Die jährlichen Statistiken des Zivildienstes auf Deutsch, Französisch und Italienisch auf moderne, attraktive und leicht verständliche Weise visualisieren.
+
 Interaktive Datengrafiken (D3.js v7, vanilla JS) für den Zivildienst (ZIVI). Jeder Ordner ist eine eigenständige Grafik: Es genügt, die `index.html` im Browser zu öffnen, damit sie funktioniert (D3 wird von einem CDN geladen).
 
 **Grafiken online ansehen: [alexhub28.github.io/ZIVI-Jahreszahlen](https://alexhub28.github.io/ZIVI-Jahreszahlen/)**
@@ -30,9 +34,17 @@ D3 wird hier als **„vanilla" JavaScript** eingesetzt, also als reines JavaScri
 - [**Rechtsdienst (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst/) — Disziplinarentscheide pro Jahr
 - [**Rechtsdienst (stacked bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst%20empil%C3%A9/) — Disziplinarentscheide pro Jahr, Art. 73/74 + Art. 76 gestapelt, Strafanzeigen und Strafbefehle separat
 
+## Quellen
+
+Grafische Charta des Bundesamts für Zivildienst und offizielle Statistiken des Zivildienstes: https://www.zivi.admin.ch/de/zahlen-und-fakten
+
 ---
 
 # Statistiques annuelles - Office fédéral du service civil
+
+## But
+
+Visualiser en allemand, français et italien les statistiques annuelles du service civil de manière moderne, attractive et facilement compréhensible.
 
 Graphiques de données interactifs (D3.js v7, vanilla JS) pour le service civil (ZIVI). Chaque dossier est un graphique autonome : ouvrir son `index.html` dans un navigateur suffit pour le voir fonctionner (D3 est chargé depuis un CDN).
 
@@ -63,3 +75,7 @@ D3 est utilisé ici en **JavaScript « vanilla »**, c'est-à-dire du JavaScript
 - [**Kurse pro Kursart (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse%20pro%20Kursart%20pie%20chart/) — Nombre de cours par genre de cours
 - [**Rechtsdienst (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst/) — Décisions disciplinaires par année
 - [**Rechtsdienst (stacked bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst%20empil%C3%A9/) — Décisions disciplinaires par année, art. 73/74 + art. 76 empilées, plaintes pénales et ordonnances pénales séparées
+
+## Sources
+
+Charte graphique de l'Office fédéral du service civil et statistiques officielles du service civil : https://www.zivi.admin.ch/de/zahlen-und-fakten

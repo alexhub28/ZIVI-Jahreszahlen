@@ -208,8 +208,10 @@ function drawChart() {
         .ease(d3.easeCubicOut)
         .attr("width", d => barWidth(s.point(d).value));
 
-      // --- Étiquette valeur + % à droite de chaque barre ---
-      g.selectAll(`text.value-${s.key}`)
+      // --- Étiquette "%" à droite de chaque barre, compteur animé ; la
+      // valeur absolue s'affiche entre parenthèses uniquement au survol
+      // de la ligne (cf. highlight() plus bas). ---
+      const valueLabels = g.selectAll(`text.value-${s.key}`)
         .data(data)
         .enter()
         .append("text")
@@ -221,12 +223,23 @@ function drawChart() {
         .style("font-size", isMobile ? "10.5px" : "12.5px")
         .style("font-weight", "bold")
         .style("fill", "#111")
+        .style("opacity", 0);
+
+      valueLabels.append("tspan").attr("class", "pct-value").text("0 %");
+      valueLabels.append("tspan")
+        .attr("class", "count-value")
         .style("opacity", 0)
-        .text(d => `${formatSwiss(s.point(d).value)} (${formatPercent(s.point(d).percent)})`)
-        .transition()
+        .text(d => ` (${formatSwiss(s.point(d).value)})`);
+
+      valueLabels.transition()
         .delay((d, i) => i * 130 + si * 100 + 500)
         .duration(300)
-        .style("opacity", 1);
+        .style("opacity", 1)
+        .tween("text", function (d) {
+          const iPct = d3.interpolateNumber(0, s.point(d).percent);
+          const pctSpan = d3.select(this).select("tspan.pct-value");
+          return t => pctSpan.text(formatPercent(iPct(t)));
+        });
     });
 
     // --- Labels (langue courante) à gauche, centrés sur la paire de barres ---
@@ -256,6 +269,13 @@ function drawChart() {
         .style("opacity", d => (key === null || d.key === key) ? 1 : 0.3)
         .style("font-weight", d => (key !== null && d.key === key) ? "bold" : "normal")
         .style("fill", d => (key !== null && d.key === key) ? "#000" : "#333");
+
+      // Valeur absolue entre parenthèses : invisible par défaut, ne
+      // s'affiche que pour la ligne survolée — seul le pourcentage
+      // reste visible en permanence.
+      g.selectAll(".count-value")
+        .transition().duration(150)
+        .style("opacity", d => (key !== null && d.key === key) ? 1 : 0);
     }
 
     g.selectAll("rect.hit")

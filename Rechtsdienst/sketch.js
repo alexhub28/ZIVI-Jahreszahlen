@@ -11,12 +11,8 @@ const titleLookup = {
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
 
-// Les 5 séries de barres ont chacune leur propre teinte, distincte des
-// 4 autres et de la ligne Diensttage (Rouge Bund) : petrol, mint, kaki,
-// lila (charte) plus jaune (Limonengelb) pour la 5e série qui partageait
-// auparavant une teinte avec une autre (04.09.2026, sur demande de
-// l'utilisatrice - petrol n'était plus utilisé par aucune barre depuis
-// que la ligne est passée au rouge).
+// Les 5 séries de barres ont chacune leur propre teinte (petrol, mint,
+// kaki, lila, jaune), distincte aussi de la ligne Diensttage (rouge).
 const SERIES = [
   {
     key: "Total",
@@ -154,8 +150,7 @@ function createScales(data, innerWidth, innerHeight) {
 // Axes
 // ============================================================
 
-// --- Repères horizontaux discrets (axe gauche) ---
-// --- Axe gauche ---
+// --- Axe gauche (grille + graduations) ---
 function drawLeftAxis(g, scales, innerWidth, innerHeight, isMobile) {
   const { yLeft, maxLeft } = scales;
   const leftTicks = d3.range(0, maxLeft + 1, 100);
@@ -331,8 +326,7 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
 // Interaction
 // ============================================================
 
-// --- Pastille qui suit l'année survolée sur la ligne ---
-// --- Survol par année : isolation du groupe ---
+// --- Survol par année : isole le groupe, pastille sur la ligne ---
 function attachHoverInteraction(g, data, scales, innerHeight, margin) {
   const { x0, yRight } = scales;
 

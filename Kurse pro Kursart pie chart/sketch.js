@@ -8,16 +8,14 @@ const titleLookup = {
   it: "2025: Corsi per genere del corso"
 };
 
-// Plus de 4 catégories : palette fixe à 4 couleurs (petrol, lila,
-// mint, kaki), reprise par cycle dans l'ordre des parts (triées par
-// valeur décroissante) — couleur unie, pas de dégradé.
+// Plus de 4 catégories : palette fixe à 4 couleurs, reprise par cycle
+// dans l'ordre des parts (triées par valeur décroissante).
 const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488"];
 
 const MOBILE_BREAKPOINT = 600;
 
-// En dessous de ce pourcentage, l'etiquette (valeur + %) sort de la part
-// (trop etroite pour l'accueillir) et se retrouve reliee par une ligne de
-// rappel, empilee avec les autres petites parts plutot que superposee.
+// En dessous de ce pourcentage, l'etiquette sort de la part (trop
+// etroite) et est reliee par une ligne de rappel, empilee avec les autres.
 const INNER_LABEL_MIN_PERCENT = 5;
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
@@ -113,11 +111,8 @@ function styleLabelText(sel) {
     .style("fill", "#000");
 }
 
-// Un groupe par part : regroupe le secteur, son etiquette et (le cas
-// echeant) sa ligne de rappel. Le survol de n'importe lequel de ces
-// elements met en evidence l'ensemble ("encadre toute la case
-// correspondante"), ce qui aide aussi sur les toutes petites parts ou le
-// secteur lui-meme est presque impossible a survoler directement.
+// Un groupe par part (secteur + etiquette + ligne de rappel) : le survol
+// de n'importe lequel de ces elements met en evidence l'ensemble.
 function drawSlices(g, arcs, colorFor, arc) {
   const item = g.selectAll("g.pie-item")
     .data(arcs, d => d.data.Label)
@@ -176,12 +171,8 @@ function drawInnerLabels(item, innerLabelArc, isMobile) {
     .style("opacity", 1);
 }
 
-// Decluttage vertical : quand plusieurs petites parts sont angulairement
-// proches, leurs etiquettes exterieures se retrouvent quasi a la meme
-// hauteur et se chevauchent. On calcule d'abord la position "naturelle"
-// (centroid) de chaque etiquette, puis on ecarte par cote (gauche/droite)
-// les etiquettes trop proches, par relaxation iterative, en conservant
-// leur ordre vertical.
+// Decluttage vertical : ecarte par relaxation iterative les etiquettes
+// exterieures trop proches (meme cote), en conservant leur ordre vertical.
 function computeDeclutteredLabelPositions(smallArcs, outerAnchorArc) {
   const LABEL_MIN_GAP = 15;
   const labelLayout = smallArcs.map(d => {
@@ -231,11 +222,8 @@ function drawLeaderLines(smallItems, arc, outerAnchorArc, labelY, outerRadius) {
     .style("opacity", 1);
 }
 
-// Pastille de couleur juste a cote de chaque etiquette de petite part :
-// pour une part tres fine, le secteur lui-meme peut etre trop etroit
-// pour laisser voir sa propre couleur de remplissage. La pastille reste
-// toujours visible et rappelle sans ambiguite quelle couleur (donc quel
-// type de cours, via la legende) correspond a cette valeur.
+// Pastille de couleur a cote de l'etiquette : pour une part tres fine,
+// le secteur peut etre trop etroit pour montrer sa propre couleur.
 function drawOuterSwatches(smallItems, colorFor, labelY, outerRadius, swatchSize) {
   const swatches = smallItems.append("rect")
     .attr("class", "outer-swatch")
@@ -280,11 +268,8 @@ function drawOuterLabels(smallItems, labelY, outerRadius, isMobile, swatchSize, 
     .style("opacity", 1);
 }
 
-// Nom du type de cours affiche au survol, centre au-dessus du camembert
-// pour les petites parts. Pour les grandes parts, affiche a cote de la
-// part elle-meme (meme point de depart que les lignes de rappel des
-// petites parts), avec le texte qui s'eloigne du camembert plutot que
-// de le recouvrir.
+// Nom du type de cours affiche au survol : centre au-dessus du camembert
+// pour les petites parts, a cote de la part elle-meme pour les grandes.
 function attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile) {
   const nameLabel = svg.append("text")
     .attr("class", "hover-name")
@@ -294,11 +279,9 @@ function attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile) {
     .style("fill", "#000")
     .style("opacity", 0);
 
-  // --- Survol : entoure toute la part correspondante (secteur + ligne de
-  // rappel), quel que soit l'element survole. raise() ramene le groupe au
-  // premier plan : sans ca, le cote partage avec la part suivante (dessinee
-  // apres, donc par-dessus) se faisait recouvrir par son propre contour
-  // blanc et un seul des deux cotes droits du secteur restait visible.
+  // Survol : entoure toute la part (secteur + ligne de rappel). raise()
+  // ramene le groupe au premier plan, sinon le contour blanc de la part
+  // suivante le recouvrait partiellement.
   item
     .on("mouseover", function (event, d) {
       const node = d3.select(this).raise();

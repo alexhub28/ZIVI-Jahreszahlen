@@ -2,8 +2,7 @@
 // Configuration
 // ============================================================
 
-// Petrol officiel ZIVI (accent1), couleur unie (pas de degrade) :
-// graphique a une seule variable.
+// Petrol officiel ZIVI, couleur unie (1 variable = pas de degrade).
 const BASE_PETROL = "#5A959D";
 
 const DATA_FILE = "EAZ_Anzahl_Kurse.csv";
@@ -92,9 +91,8 @@ function createScales(data, layout) {
     .domain([0, maxVal * Y_AXIS_HEADROOM])
     .range([layout.innerHeight, 0]);
 
-  // Degrade cale sur l'ecart reel des valeurs (minVal-maxVal) plutot que
-  // sur [0, max] : sinon la variation de teinte serait presque invisible,
-  // toutes les barres etant deja proches du haut de l'echelle.
+  // Plus utilisee depuis l'aplat petrol unique (getBarColor ignore
+  // ses parametres) - gardee au cas ou un degrade reviendrait.
   const colorScale = d3.scaleLinear().domain([minVal, maxVal]).range([0, 1]);
 
   return { x, y, colorScale };

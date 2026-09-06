@@ -15,9 +15,8 @@ const axisTitleLookup = {
   it: "Giorni di servizio"
 };
 
-// Plus de 4 domaines : palette fixe à 4 couleurs (petrol, lila, mint,
-// kaki), reprise par cycle dans l'ordre des barres (triées par valeur
-// décroissante) — couleur unie, pas de dégradé.
+// Plus de 4 domaines : palette fixe à 4 couleurs, cyclée par ordre
+// de barre (valeur décroissante), toujours en aplat.
 const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488"];
 
 function buildColorScale(data) {
@@ -82,10 +81,8 @@ function drawBars(g, data, x, y, colorFor) {
     .attr("width", d => x(d.Value));
 }
 
-// --- Mesure la largeur du plus long label de domaine, pour dimensionner
-// la colonne de gauche au plus juste (au lieu d'une marge fixe généreuse).
-// Ajoute un <text> temporaire (hors écran) au même SVG, mesure chaque
-// label avec getComputedTextLength(), puis le retire.
+// --- Mesure le plus long label pour dimensionner la colonne de
+// gauche au plus juste (texte temporaire mesuré puis retiré) ---
 function measureMaxLabelWidth(svg, data, fontSize) {
   const probe = svg.append("text")
     .attr("class", "label-probe")
@@ -105,11 +102,8 @@ function measureMaxLabelWidth(svg, data, fontSize) {
   return maxWidth;
 }
 
-// --- Label (langue courante) à gauche, aligné à gauche (tous les noms
-// commencent à la même position, l'un sous l'autre, comme une légende),
-// centré verticalement sur sa barre — une seule ligne, puisque
-// data_<lang>.csv ne contient plus qu'une langue à la fois (fini le
-// split(" / ") sur trois lignes).
+// --- Label aligné à gauche, centré verticalement sur sa barre
+// (une seule langue par data_<lang>.csv) ---
 function drawRowLabels(g, data, y, margin, isMobile) {
   g.selectAll("text.label")
     .data(data)
@@ -127,9 +121,8 @@ function drawRowLabels(g, data, y, margin, isMobile) {
     .text(d => d.Label);
 }
 
-// --- Étiquette "%" au bout de chaque barre, avec compteur animé. Le
-// chiffre absolu (Value) n'est plus affiché en permanence — pour ne
-// pas surcharger le graphique, il n'apparaît qu'au survol (tooltip).
+// --- "%" animé au bout de chaque barre ; la valeur absolue n'apparaît
+// qu'au survol (tooltip), pour ne pas surcharger le graphique ---
 function drawValueLabels(g, data, x, y, isMobile) {
   const valueLabels = g.selectAll("text.value")
     .data(data)
@@ -156,17 +149,14 @@ function drawValueLabels(g, data, x, y, isMobile) {
     });
 }
 
-// --- Axe X ---
-// Nombre de graduations calculé selon la largeur réelle disponible
-// (pas juste mobile/desktop) : évite le chevauchement des nombres
-// suisses ("1'000'000") sur les grandes largeurs comme sur les petites.
+// --- Axe X : graduations calculées selon la largeur réelle, pour
+// éviter le chevauchement des nombres suisses ---
 function drawXAxis(g, x, innerWidth, innerHeight, isMobile) {
   const tickPxBudget = isMobile ? 55 : 85;
   const tickCount = Math.max(2, Math.min(6, Math.floor(innerWidth / tickPxBudget)));
 
-  // On ne garde que les graduations qui tombent réellement dans la zone
-  // du graphique : évite les petits traits sans chiffre qui dépassaient
-  // au-delà de la dernière valeur (ex. après "1'000'000").
+  // Ne garde que les graduations dans la zone du graphique (évite les
+  // traits sans chiffre au-delà de la dernière valeur).
   const clampedTicks = x.ticks(tickCount).filter(v => x(v) <= innerWidth + 0.5);
 
   g.append("g")
@@ -196,14 +186,13 @@ function drawAxisTitle(svg, margin, innerWidth, height, isMobile) {
 }
 
 // --- Survol par ligne : met en évidence label + barre + valeur ---
-// (pas de tooltip : tout est déjà lisible en permanence sur le graphique)
 function highlight(g, label) {
   g.selectAll(".bar, .value")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3);
 
-  // Label survolé : noir plus franc + gras (pas d'agrandissement,
-  // pour ne pas risquer de chevaucher les lignes voisines).
+  // Label survolé : noir + gras, sans agrandissement (évite le
+  // chevauchement des lignes voisines).
   g.selectAll(".label")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3)
@@ -236,9 +225,8 @@ function createTooltip(svg) {
 function positionTooltip(tooltipParts, d, mx, my, chartWidth) {
   const { tooltip, tooltipRect, tooltipText } = tooltipParts;
 
-  // Repartir de (0, 0) avant de mesurer : sinon getBBox() renvoie une
-  // boîte qui inclut encore le x/y laissé par le survol précédent, et
-  // le texte dérive hors de l'encadré au fil des survols successifs.
+  // Repartir de (0,0) avant de mesurer : sinon getBBox() garde le
+  // x/y du survol précédent et le texte dérive hors de l'encadré.
   tooltipText.attr("x", 0).attr("y", 0).text(formatSwiss(d.Value));
 
   const bbox = tooltipText.node().getBBox();
@@ -308,9 +296,8 @@ function drawChart() {
 
     const colorFor = buildColorScale(data);
 
-    // Largeur de la colonne de labels calée sur le nom réellement le
-    // plus long (mesuré), plutôt qu'une marge fixe généreuse — pour que
-    // les barres démarrent juste après les labels, sans grand vide.
+    // Largeur de la colonne de labels calée sur le nom le plus long
+    // (mesuré), pour que les barres démarrent juste après, sans vide.
     const labelFontSize = isMobile ? "11px" : "12.5px";
     const maxLabelWidth = measureMaxLabelWidth(svg, data, labelFontSize);
 

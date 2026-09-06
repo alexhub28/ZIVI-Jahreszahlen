@@ -167,9 +167,8 @@ function drawChart() {
       .map(d => ({ year: d["Jahr"], value: +d["Diensttage"] }))
       .sort((a, b) => a.year - b.year);
 
-    // Marges et hauteur figées : ce fichier est calibré pour tenir dans
-    // le cadre iframe LivingDocs (max 1000×500px), pas pour être fluide
-    // sur toutes les tailles d'écran comme la version originale.
+    // Marges et hauteur figées : calibré pour l'iframe LivingDocs
+    // (max 1000×500px), pas fluide comme la version originale.
     const margin = {
       top: 14,
       right: isMobile ? 10 : 20,
@@ -177,9 +176,8 @@ function drawChart() {
       left: isMobile ? 50 : 72
     };
 
-    // Embed compact : pas de largeur minimale forcée / scroll horizontal
-    // (peu exploitable dans une iframe LivingDocs) — les barres se
-    // compressent pour que toutes les années restent toujours visibles.
+    // Embed compact : pas de largeur minimale forcée ni scroll horizontal ;
+    // les barres se compressent pour que toutes les années restent visibles.
     const innerWidth = containerWidth - margin.left - margin.right;
     const width = containerWidth;
 

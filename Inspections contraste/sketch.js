@@ -2,10 +2,8 @@
 // Configuration
 // ============================================================
 
-// Graphique "contraste" : une seule teinte (petrol, accent1), affichee a
-// pleine intensite pour Angekuendigt et a 50% pour Unangekuendigt - par
-// opposition a la version "bicolores" du dossier parent, qui utilise
-// deux couleurs distinctes pour les deux categories.
+// Graphique "contraste" : une seule teinte (petrol), a pleine intensite
+// pour Angekuendigt et 50% pour Unangekuendigt (vs. "bicolores" : 2 couleurs).
 const BASE_COLOR = "#5A959D";   // accent1 — petrol, teinte unique
 const STROKE_COLOR = "#46747A"; // petrol plus soutenu, contour commun aux deux segments
 

@@ -8,37 +8,29 @@ const titleLookup = {
   it: "Numero dei corsi"
 };
 
-// Même petrol officiel ZIVI (accent1) que le bar chart original.
-// Couleur unie pour toutes les bulles (pas de degrade) : graphique
-// a une seule variable.
+// Petrol officiel ZIVI, couleur unie (1 variable = pas de degrade).
 const BASE_PETROL = "#5A959D";
 
 const DATA_FILE = "EAZ_Anzahl_Kurse.csv";
 const MOBILE_BREAKPOINT = 600;
 
-// Positionnement le long d'un axe x (une bulle par annee, alignee sur
-// sa position sur l'axe) plutot qu'un empaquetage libre (d3.pack) :
-// l'aire de chaque bulle reste proportionnelle au nombre de cours de
-// son annee (meme logique qu'avant), mais son centre x correspond
-// desormais a l'annee, toutes les bulles reposant sur la meme ligne de
-// base au-dessus de l'axe.
+// Bulles alignees sur un axe x (une par annee), plutot qu'un
+// empaquetage libre (d3.pack) ; aire toujours proportionnelle a la valeur.
 const MAX_RADIUS_DESKTOP = 50;
 const MAX_RADIUS_MOBILE = 34;
 const MIN_RADIUS = 4;
 
-// Fraction du demi-intervalle entre deux annees consecutives que le
-// rayon maximal peut occuper : reserve toujours un espace visible entre
-// deux bulles voisines, meme si elles sont toutes les deux au rayon max.
+// Fraction du demi-intervalle entre annees que le rayon max peut
+// occuper, pour garder un espace visible entre bulles voisines.
 const BUBBLE_GUTTER = 0.86;
 
 // Espace vertical entre le bas de la plus grande bulle possible et la
 // ligne de l'axe x.
 const AXIS_GAP = 14;
 
-// Legere oscillation continue des bulles ("respiration"), une fois leur
-// apparition terminee. BUBBLE_PULSE_SCALE est un ecart proportionnel
-// (0.03 = +/-3%), volontairement modeste pour ne jamais empieter sur les
-// bulles voisines malgre l'empaquetage serre.
+// Oscillation continue ("respiration") apres l'apparition.
+// BUBBLE_PULSE_SCALE = ecart proportionnel (0.03 = +/-3%), modeste
+// pour ne pas empieter sur les bulles voisines.
 const BUBBLE_PULSE_SCALE = 0.03;
 const BUBBLE_PULSE_DURATION = 2000;
 
@@ -79,15 +71,14 @@ function formatSwiss(n) {
 // Mise en page (positions le long de l'axe x) + axe
 // ============================================================
 
-// Construit la mise en page : position x de chaque annee sur l'axe,
-// rayon de sa bulle (aire proportionnelle a la valeur), et la hauteur
-// totale du panneau necessaire (dependante du rayon max effectif).
+// Position x de chaque annee, rayon (aire proportionnelle a la valeur)
+// et hauteur totale du panneau.
 function buildTimelineLayout(data, containerWidth, isMobile) {
   const maxValue = d3.max(data, d => d.value);
   const nominalMaxR = isMobile ? MAX_RADIUS_MOBILE : MAX_RADIUS_DESKTOP;
 
-  // Marges laterales : assez larges pour que la premiere/derniere bulle
-  // (au rayon nominal max) ne soit jamais rognee par le bord du panneau.
+  // Marges laterales assez larges pour ne jamais rogner les bulles
+  // aux bords du panneau.
   const sidePad = nominalMaxR + (isMobile ? 8 : 12);
   const margin = {
     top: isMobile ? 14 : 18,
@@ -104,11 +95,9 @@ function buildTimelineLayout(data, containerWidth, isMobile) {
   const step = data.length > 1 ? innerWidth / (data.length - 1) : innerWidth;
   const maxR = Math.max(MIN_RADIUS, Math.min(nominalMaxR, (step / 2) * BUBBLE_GUTTER));
 
-  // Domaine ET intervalle de sortie bases sur zero : l'aire de chaque
-  // bulle est ainsi strictement proportionnelle a sa valeur (pas
-  // seulement son rayon). Le plancher MIN_RADIUS est applique apres
-  // coup, en garde-fou pour une valeur nulle/quasi nulle, sans fausser
-  // la proportionnalite entre les valeurs reelles des donnees.
+  // Domaine et sortie bases sur zero : l'aire (pas juste le rayon)
+  // est proportionnelle a la valeur. MIN_RADIUS n'est qu'un garde-fou
+  // applique apres coup.
   const rScale = d3.scaleSqrt().domain([0, maxValue]).range([0, maxR]);
   const r = value => Math.max(MIN_RADIUS, rScale(value));
 
@@ -141,9 +130,8 @@ function getFillColor() {
   return BASE_PETROL;
 }
 
-// Fait osciller doucement un groupe entre deux echelles (scale), en
-// va-et-vient infini. Le delai initial permet d'attendre la fin de
-// l'animation d'entree de la bulle avant de demarrer la respiration.
+// Oscille en va-et-vient infini entre deux echelles ; le delai initial
+// attend la fin de l'animation d'entree.
 function pulseLoop(selection, minScale, maxScale, duration, initialDelay) {
   function cycle() {
     selection
@@ -174,9 +162,8 @@ function drawBubbleShapes(svg, nodes, isMobile) {
     .attr("transform", d => `translate(${d.x}, ${d.y})`)
     .style("cursor", "pointer");
 
-  // Groupe interne, pour appliquer l'oscillation (pulseLoop, plus bas)
-  // par un simple scale centre sur la bulle elle-meme — jamais une
-  // translation, qui risquerait de faire chevaucher les bulles voisines.
+  // Groupe interne pour l'oscillation (pulseLoop) : un scale, jamais
+  // une translation, pour ne pas chevaucher les bulles voisines.
   const pulse = bubble.append("g").attr("class", "pulse");
 
   pulse.append("circle")
@@ -190,8 +177,7 @@ function drawBubbleShapes(svg, nodes, isMobile) {
     .ease(d3.easeCubicOut)
     .attr("r", d => d.r);
 
-  // L'annee est deja portee par l'axe x : la bulle affiche desormais sa
-  // valeur en permanence (plus besoin d'un survol pour la lire).
+  // L'annee est deja sur l'axe x : la bulle affiche sa valeur en permanence.
   pulse.append("text")
     .attr("class", "bubble-value")
     .attr("text-anchor", "middle")
@@ -210,10 +196,8 @@ function drawBubbleShapes(svg, nodes, isMobile) {
   return bubble;
 }
 
-// Legere oscillation continue, une fois l'apparition terminee : un
-// discret effet de respiration (grossissement/retrecissement autour du
-// centre de la bulle), sans jamais deplacer son centre — ce qui
-// garantit qu'elle ne vient jamais empieter sur ses voisines.
+// Oscillation continue (grossissement/retrecissement) apres
+// l'apparition, sans jamais deplacer le centre de la bulle.
 function startBubblePulses(bubble) {
   bubble.each(function (d, i) {
     pulseLoop(

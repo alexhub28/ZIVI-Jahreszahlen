@@ -108,9 +108,8 @@ function computeLayout(containerWidth, isMobile) {
     left: isMobile ? 34 : 46
   };
 
-  // Embed compact : pas de largeur minimale forcee / scroll horizontal
-  // (peu exploitable dans une iframe LivingDocs) - les barres se
-  // compressent pour que toutes les annees restent toujours visibles.
+  // Embed compact : pas de largeur minimale forcee ni scroll horizontal ;
+  // les barres se compressent pour que toutes les annees restent visibles.
   const innerWidth = containerWidth - margin.left - margin.right;
   const innerHeight = 350;
   const width = containerWidth;

@@ -8,9 +8,8 @@ const titleLookup = {
   it: "2025: Giorni di servizio per ambiti d’attività"
 };
 
-// Plus de 4 domaines : palette fixe à 4 couleurs (petrol, lila, mint,
-// kaki), reprise par cycle dans l'ordre des bulles (triées par valeur
-// décroissante) — couleur unie, pas de dégradé.
+// Plus de 4 domaines : palette fixe à 4 couleurs, cyclée par ordre
+// de bulle (valeur décroissante), toujours en aplat.
 const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488"];
 
 function buildColorScale(data) {
@@ -20,11 +19,9 @@ function buildColorScale(data) {
 
 const MOBILE_BREAKPOINT = 600;
 
-// En dessous de ce pourcentage, la bulle est trop petite pour accueillir
-// lisiblement son étiquette : le pourcentage est alors affiché juste en
-// dessous de la bulle plutôt que dedans. Seuil abaisse a 2 (au lieu de 5,
-// repris au depart de l'ancien camembert) : les bulles a 3.6 % et 2.7 %
-// sont assez grandes pour accueillir leur etiquette a l'interieur.
+// En dessous, la bulle est trop petite pour son étiquette (affichée
+// à côté plutôt que dedans). Seuil à 2 (pas 5, hérité du camembert) :
+// les bulles à 3.6 % et 2.7 % ont assez de place à l'intérieur.
 const INNER_LABEL_MIN_PERCENT = 2;
 
 // Empaquetage des bulles (d3.pack) : l'aire de chaque bulle est
@@ -34,11 +31,9 @@ const PACK_PADDING = 14;
 const TOOLTIP_PAD_X = 10;
 const TOOLTIP_PAD_Y = 8;
 
-// Marge a laquelle les bulles sont alignees a gauche (cf.
-// computeBubbleTransform) : sur un conteneur large, d3.pack() n'etale pas
-// forcement les bulles sur toute la largeur disponible (la hauteur du
-// graphique reste souvent le facteur limitant), ce qui les laissait
-// flotter au milieu d'un grand vide. On les replace nous-memes a gauche.
+// Marge d'alignement à gauche (cf. computeBubbleTransform) : d3.pack()
+// n'étale pas toujours les bulles sur toute la largeur, on les replace
+// nous-mêmes plutôt que de les laisser flotter au milieu d'un vide.
 const BUBBLES_LEFT_MARGIN = 20;
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
@@ -101,11 +96,8 @@ function styleLabelText(sel) {
     .style("fill", "#111");
 }
 
-// Position d'une étiquette extérieure (petite bulle) : en dessous par
-// défaut, mais à droite / à gauche / au-dessus si la position par défaut
-// tomberait sur une bulle voisine (ex. une petite bulle coincée entre
-// deux grandes). Teste les quatre côtés dans cet ordre et garde le
-// premier qui ne chevauche aucune autre bulle du graphique.
+// Position d'étiquette extérieure : en dessous par défaut, sinon
+// droite/gauche/au-dessus si ça chevauche une bulle voisine.
 function chooseOutsideLabelPosition(d, allNodes) {
   const GAP = 8;
   const candidates = [
@@ -115,10 +107,8 @@ function chooseOutsideLabelPosition(d, allNodes) {
     { dx: 0, dy: -(d.r + GAP + 4), anchor: "middle" }   // au-dessus
   ];
 
-  // Marge generuse (pas seulement le rayon de l'autre bulle) : le point
-  // teste n'est que l'ancrage du texte, qui s'etend lui-meme de part et
-  // d'autre — sans cette marge, une etiquette peut techniquement ne pas
-  // toucher le CERCLE voisin tout en paraissant collee dessus.
+  // Marge généreuse : le point testé n'est que l'ancrage du texte,
+  // qui s'étend de part et d'autre — sans marge il paraît collé au cercle.
   const LABEL_HALF_WIDTH = 22;
 
   for (const c of candidates) {
@@ -133,9 +123,8 @@ function chooseOutsideLabelPosition(d, allNodes) {
   return candidates[0]; // repli : en dessous, même si ça chevauche encore
 }
 
-// Seul le pourcentage reste affiché en permanence (dans la bulle si elle
-// est assez grande pour l'accueillir, juste à côté sinon) — le nom du
-// domaine et le chiffre exact n'apparaissent qu'au survol (info-bulle).
+// Seul le pourcentage reste affiché en permanence ; le nom et le
+// chiffre exact n'apparaissent qu'au survol (info-bulle).
 function drawPercentLabels(bubble, isMobile) {
   const allNodes = bubble.data();
 
@@ -186,11 +175,8 @@ function drawBubbleShapes(g, nodes, colorFor, isMobile) {
     .attr("transform", d => `translate(${d.x}, ${d.y})`)
     .style("cursor", "pointer");
 
-  // Pas d'oscillation continue ("respiration") sur ce graphique : avec
-  // des bulles aussi inegales en taille et deja serrees les unes contre
-  // les autres, la moindre variation periodique de rayon risquait de les
-  // faire se chevaucher transitoirement. Le groupe "pulse" ne sert donc
-  // plus qu'a regrouper le cercle et ses etiquettes.
+  // Pas d'oscillation ici : bulles trop inégales/serrées, ça les
+  // ferait se chevaucher. "pulse" ne fait plus que grouper cercle+texte.
   const pulse = bubble.append("g").attr("class", "pulse");
 
   pulse.append("circle")
@@ -210,10 +196,8 @@ function drawBubbleShapes(g, nodes, colorFor, isMobile) {
   return bubble;
 }
 
-// Boite englobante reelle du nuage de bulles (d3.pack ne garantit pas
-// qu'il occupe toute la zone [width, height] fournie), pour pouvoir
-// ensuite le repositionner nous-memes (aligne a gauche, centre
-// verticalement) plutot que de garder sa position brute.
+// Boîte englobante réelle du nuage (d3.pack ne remplit pas forcément
+// [width, height]), pour le repositionner nous-mêmes.
 function computeBubbleExtent(nodes) {
   return {
     minX: d3.min(nodes, d => d.x - d.r),
@@ -256,9 +240,8 @@ function createTooltip(svg) {
   return { tooltip, tooltipRect, tooltipText };
 }
 
-// Repart toujours de (0, 0) avant de (re)mesurer la boîte : sinon
-// getBBox() refléterait encore la position laissée par le survol
-// précédent et le texte dériverait hors de l'encadré au fil des survols.
+// Repart de (0,0) avant de mesurer : sinon getBBox() garde la
+// position du survol précédent et le texte dérive hors de l'encadré.
 function fillTooltipText(tooltipText, d) {
   tooltipText.selectAll("tspan").remove();
   tooltipText.attr("x", 0).attr("y", 0);

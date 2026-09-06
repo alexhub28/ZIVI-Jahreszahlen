@@ -86,7 +86,7 @@ function drawLegend(svg, margin, isMobile) {
   });
 }
 
-// --- Barres avec animation d'apparition + dégradé d'intensité ---
+// --- Barres avec animation d'apparition ---
 function drawBars(g, data, series, x, y0, y1, isMobile) {
   // Largeur plancher : une valeur non nulle reste toujours visible,
   // même minuscule à cette échelle (ex. Katastrophen : 11 / 48).
@@ -135,10 +135,8 @@ function drawBars(g, data, series, x, y0, y1, isMobile) {
   });
 }
 
-// --- Label (langue courante) à gauche, centré verticalement sur la
-// paire de barres — une seule ligne, puisque data_<lang>.csv ne
-// contient plus qu'une langue à la fois (fini le split(" / ") sur
-// trois lignes qui poussait le texte au-dessus de la paire).
+// --- Label à gauche, centré verticalement sur la paire de barres
+// (une seule langue par data_<lang>.csv) ---
 function drawRowLabels(g, data, y0, isMobile) {
   g.selectAll("text.label")
     .data(data)
@@ -162,8 +160,8 @@ function highlight(g, label) {
     .transition().duration(150)
     .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3);
 
-  // Label survolé : noir plus franc + gras (pas d'agrandissement,
-  // pour ne pas risquer de chevaucher les lignes voisines).
+  // Label survolé : noir + gras, sans agrandissement (évite le
+  // chevauchement des lignes voisines).
   g.selectAll(".label")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3)

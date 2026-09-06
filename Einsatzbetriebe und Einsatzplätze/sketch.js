@@ -86,11 +86,8 @@ function drawLegend(svg, margin, isMobile) {
 // Barres
 // ============================================================
 
-// --- Barres groupées avec animation d'apparition ---
-// Toutes les barres sont dessinées d'abord, puis toutes les valeurs
-// ensuite (deux passes séparées) : ça garantit que les chiffres
-// restent toujours au premier plan, même quand la barre voisine est
-// à pleine opacité (survol) et que les colonnes sont étroites.
+// Barres groupées avec animation d'apparition. Dessinées avant les
+// valeurs (deux passes) pour que les chiffres restent au premier plan.
 function drawBars(g, data, series, x0, x1, y, innerHeight) {
   series.forEach((s, si) => {
     g.selectAll(`rect.bar-${s.key}`)
@@ -116,12 +113,8 @@ function drawBars(g, data, series, x0, x1, y, innerHeight) {
 // Valeurs
 // ============================================================
 
-// Chaque valeur est ancrée sur le bord EXTÉRIEUR de sa propre barre
-// (fin pour Einsatzbetriebe, début pour Einsatzplätze) plutôt que
-// centrée sur la barre : le texte, souvent plus large que la barre
-// elle-même, s'étend alors vers l'espace libre entre les groupes
-// d'années au lieu d'empiéter sur la barre voisine.
-// --- Valeur au-dessus de chaque barre, avec compteur animé ---
+// Valeur ancrée sur le bord extérieur de sa barre (pas centrée), pour
+// s'étendre vers l'espace libre plutôt que sur la barre voisine.
 function drawValueLabels(g, data, series, x0, x1, y, innerHeight, isMobile) {
   const valueAnchor = { betriebe: "end", plaetze: "start" };
   const valueX = {

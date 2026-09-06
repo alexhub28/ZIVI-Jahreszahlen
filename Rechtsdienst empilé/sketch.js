@@ -8,18 +8,9 @@ const titleLookup = {
   it: "Decisioni disciplinari (impilate)"
 };
 
-// Le "Total Disziplinarentscheide" du graphique d'origine est la somme
-// des deux categories ci-dessous (STACK_SERIES) - elles sont donc
-// empilees en une seule colonne. Strafanzeigen et Strafbefehle sont des
-// mesures a part (pas incluses dans ce total) : chacune garde sa propre
-// colonne simple, a cote de la colonne empilee. Les 3 colonnes d'une
-// meme annee sont groupees cote a cote (comme l'etaient les 5 barres du
-// graphique d'origine), avec la meme echelle verticale (et le meme
-// systeme de grille/axe) pour rester comparables entre elles.
-//
-// Colonne empilee : une seule teinte (petrol, meme principe que le
-// graphique "Inspections contraste") - pleine intensite pour Art. 76,
-// 50% pour Art. 73/74, plutot que deux couleurs distinctes.
+// STACK_SERIES = les 2 categories empilees dans la colonne "combo"
+// (leur somme = "Total" du graphique groupe). Un seul petrol : 100%
+// pour Art. 76, 50% pour Art. 73/74 (comme "Inspections contraste").
 const BASE_COLOR = "#5A959D";   // petrol, teinte unique de la colonne empilee
 const STROKE_COLOR = "#46747A"; // petrol plus soutenu, contour des badges
 
@@ -73,17 +64,15 @@ const SOLO_SERIES = [
   }
 ];
 
-// Ordre d'affichage de la legende, tel que demande initialement.
+// Ordre d'affichage de la legende.
 const LEGEND_ORDER = ["Strafanzeigen", "Art73_74", "Strafbefehle", "Art76"];
 const ALL_SERIES = [...STACK_SERIES, ...SOLO_SERIES];
 const SERIES_BY_KEY = Object.fromEntries(ALL_SERIES.map(s => [s.key, s]));
 
-// Les 3 colonnes groupees par annee : la colonne empilee ("combo") puis
-// les deux colonnes simples.
+// Les 3 colonnes par annee : "combo" (empilee) puis 2 colonnes simples.
 const GROUPS = ["combo", "Strafanzeigen", "Strafbefehle"];
 
-// Titre de l'axe gauche - memes libelles que le graphique groupe
-// d'origine (memes 3 familles de decisions/plaintes/ordonnances).
+// Memes libelles que le graphique groupe d'origine.
 const AXIS_LEFT_LABEL_LOOKUP = {
   de: "Entscheide / Strafanzeigen / Strafbefehle",
   fr: "Décisions / Plaintes pénales / Ordonnances pénales",
@@ -96,9 +85,8 @@ const AXIS_RIGHT_LABEL_LOOKUP = {
   it: "Giorni di servizio (Milione)"
 };
 
-// Ligne des jours de service (axe droit) - reprise du graphique groupe
-// Rechtsdienst d'origine, en Rouge Bund (signal) plutot qu'en petrol,
-// pour rester distincte des couleurs des colonnes.
+// Reprise du graphique groupe, en Rouge Bund pour rester distincte
+// des couleurs des colonnes.
 const LINE_COLOR = "#FF0000"; // Rouge Bund (signal)
 const LINE_LABEL_LOOKUP = {
   de: "Anrechenbare Diensttage",
@@ -169,10 +157,8 @@ function computeLayout(containerWidth, isMobile) {
 }
 
 function createScales(data, layout) {
-  // Echelle verticale gauche, commune aux 3 colonnes d'une meme annee
-  // (et a toutes les annees) : les hauteurs restent comparables entre
-  // la colonne empilee et les deux colonnes simples. Arrondie a la
-  // centaine superieure pour des graduations de grille propres.
+  // Echelle gauche commune aux 3 colonnes, arrondie a la centaine
+  // superieure pour des graduations de grille propres.
   const maxAny = d3.max(data, d => Math.max(d.comboTotal, d.Strafanzeigen, d.Strafbefehle));
   const domainTop = Math.ceil((maxAny * Y_AXIS_HEADROOM) / 100) * 100;
 
@@ -191,9 +177,8 @@ function createScales(data, layout) {
     .domain([0, domainTop])
     .range([layout.innerHeight, 0]);
 
-  // Echelle verticale droite (Diensttage) - meme construction que le
-  // graphique groupe d'origine : marge basse genereuse (les valeurs ne
-  // varient que peu d'une annee a l'autre) et marge haute plus courte.
+  // Echelle droite (Diensttage), meme construction que le graphique
+  // groupe d'origine.
   const minDT = d3.min(data, d => d.diensttage);
   const maxDT = d3.max(data, d => d.diensttage);
   const dtRange = Math.max(maxDT - minDT, 1);
@@ -203,9 +188,7 @@ function createScales(data, layout) {
     .nice()
     .range([layout.innerHeight, 0]);
 
-  // Empilement de la colonne "combo" uniquement (Art73_74 + Art76) :
-  // une couche par categorie, chaque couche porte pour chaque annee un
-  // couple [y0, y1] (bornes cumulees), meme index que data.
+  // Empilement de la colonne "combo" (Art73_74 + Art76).
   const stack = d3.stack().keys(STACK_SERIES.map(s => s.key));
   const stackedSeries = stack(data);
 
@@ -213,8 +196,7 @@ function createScales(data, layout) {
 }
 
 // ============================================================
-// Grille & axes (repris du graphique groupe Rechtsdienst : axe gauche
-// pour les colonnes + axe droit pour la ligne des jours de service).
+// Grille & axes (repris du graphique groupe Rechtsdienst)
 // ============================================================
 
 function drawGridAndAxis(g, scales, layout, isMobile) {
@@ -278,8 +260,7 @@ function drawAxisTitle(g, x, text, layout, isMobile) {
 }
 
 // ============================================================
-// Ligne des jours de service (axe droit), tracé progressif - reprise
-// telle quelle du graphique groupe Rechtsdienst d'origine.
+// Ligne des jours de service (reprise du graphique groupe d'origine)
 // ============================================================
 
 function drawServiceLine(g, data, scales) {
@@ -309,9 +290,7 @@ function drawServiceLine(g, data, scales) {
 }
 
 // ============================================================
-// Légende (HTML, sous le graphique — mêmes classes que le graphique
-// groupé Rechtsdienst). L'opacite du swatch reprend celle de la barre,
-// pour que la legende montre bien les deux intensites de petrol.
+// Légende (HTML sous le graphique, mêmes classes que Rechtsdienst)
 // ============================================================
 
 function drawLegend() {
@@ -401,9 +380,8 @@ function drawSoloBars(g, data, scales, layout, isMobile, s) {
     .attr("y", d => y(d[s.key]))
     .attr("height", d => layout.innerHeight - y(d[s.key]));
 
-  // Valeur toujours visible au-dessus de la barre (colonne a une seule
-  // valeur, pas de detail a reveler au survol) : principale + valeur
-  // interne entre parentheses, comme dans le graphique groupe d'origine.
+  // Valeur + valeur interne entre parentheses, toujours visibles
+  // au-dessus de la barre.
   data.forEach((d, i) => {
     const cx = x0(d.year) + groupX + x1.bandwidth() / 2;
     const delay = i * 90 + SEGMENT_DURATION + 100;
@@ -411,10 +389,8 @@ function drawSoloBars(g, data, scales, layout, isMobile, s) {
   });
 }
 
-// Paire "valeur principale (grasse) / valeur interne entre parentheses
-// (grise, plus discrete)" empilee au-dessus du sommet d'une barre -
-// meme mise en page que value-main / value-intern dans le graphique
-// groupe Rechtsdienst d'origine.
+// Valeur principale + valeur interne entre parentheses, au-dessus
+// du sommet de la barre.
 function drawValuePair(g, d, cx, yBarTop, mainText, internText, delay, isMobile) {
   const mainLabel = g.append("text")
     .attr("class", "value total")
@@ -452,10 +428,8 @@ function drawValuePair(g, d, cx, yBarTop, mainText, internText, delay, isMobile)
     .style("opacity", 1);
 }
 
-// Badge de fond plein (toujours en petrol opaque, quel que soit
-// l'opacite propre du segment) pour garder le texte lisible quand un
-// segment est trop bas pour le contenir - meme principe que le badge
-// du graphique "Inspections contraste".
+// Badge petrol opaque derriere le texte quand le segment est trop
+// bas (cf. "Inspections contraste").
 function drawLabelBadge(container, text, cx, cy, fontSize) {
   const digitWidth = fontSize * 0.62;
   const badgeWidth = text.length * digitWidth + 10;
@@ -472,14 +446,8 @@ function drawLabelBadge(container, text, cx, cy, fontSize) {
     .attr("stroke-width", 1);
 }
 
-// Valeur par segment de la colonne empilée (Art. 73/74 et Art. 76,
-// les deux parties en petrol), toujours visible - meme principe que
-// value-main / value-intern pour les colonnes simples : principale +
-// valeur interne entre parentheses. Comme les autres etiquettes du
-// graphique, elle se dimme (pas ne disparait pas) quand une autre
-// annee est survolee (cf. highlightColumn()). Quand un segment est
-// trop bas pour porter le texte lisiblement, un badge plein (petrol
-// opaque) est ajoute derriere.
+// Valeur par segment (Art. 73/74, Art. 76), toujours visible, se
+// dimme (sans disparaitre) au survol d'une autre annee.
 function drawComboSegmentLabels(g, d, i, scales, isMobile) {
   const { x0, x1, y, stackedSeries } = scales;
   const comboX = x0(d.year) + x1("combo");
@@ -499,13 +467,8 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
     const internText = `(${formatSwiss(d[s.internKey])})`;
     const delay = i * 90 + si * 60 + SEGMENT_DURATION + 100;
 
-    // Le texte est pose sur fond colore (le segment lui-meme, ou le badge
-    // plein derriere quand le segment est trop bas) : #111/#888 (prevus
-    // pour un fond blanc) restent lisibles sur le segment Art73_74 (petrol
-    // a 50%, donc tres clair une fois melange au blanc), mais le texte
-    // gris (#888) devient quasi invisible sur Art76 (petrol a 100%, fond
-    // sombre) et sur le badge (toujours en petrol opaque). Fond sombre ->
-    // texte clair.
+    // Texte blanc sur fond sombre (Art76 a 100%, ou badge) pour rester
+    // lisible ; noir/gris sinon.
     const onDarkBg = !inside || s.opacity >= 0.9;
     const mainColor = onDarkBg ? "#ffffff" : "#111";
     const internColor = onDarkBg ? "#d7e6e8" : "#888";
@@ -547,9 +510,7 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
   });
 }
 
-// Total de la colonne empilée (Art73_74 + Art76), toujours visible -
-// c'est la meme grandeur que "Total" (et "Total_Intern") dans le
-// graphique groupe d'origine.
+// Total de la colonne empilee (= "Total" du graphique groupe d'origine).
 function drawComboTotalLabel(g, d, i, scales, layout, isMobile) {
   const { x0, x1, y } = scales;
   const comboX = x0(d.year) + x1("combo");
@@ -580,10 +541,8 @@ function drawYearLabel(g, d, x0, layout, isMobile) {
 // Interaction
 // ============================================================
 
-// Une seule zone de survol par annee, couvrant les 3 colonnes du
-// groupe : isole l'annee entiere (comme le graphique groupe d'origine)
-// et fait apparaitre une pastille sur la ligne des jours de service,
-// a la position de l'annee survolee.
+// Zone de survol par annee : isole l'annee et affiche la pastille
+// sur la ligne des jours de service.
 function attachHoverArea(g, data, scales, layout) {
   const { x0, yRight } = scales;
 
@@ -686,8 +645,8 @@ function drawChart() {
     drawAxisTitle(g, -(layout.margin.left - (isMobile ? 14 : 18)), AXIS_LEFT_LABEL_LOOKUP[currentLang], layout, isMobile);
     drawAxisTitle(g, layout.innerWidth + (layout.margin.right - (isMobile ? 14 : 18)), AXIS_RIGHT_LABEL_LOOKUP[currentLang], layout, isMobile);
 
-    // Ligne avant barres (ordre verifie et voulu, comme le graphique
-    // groupe d'origine) pour que les colonnes restent au premier plan.
+    // Ligne avant barres (ordre voulu, comme le graphique groupe)
+    // pour que les colonnes restent au premier plan.
     drawServiceLine(g, data, scales);
     drawColumns(g, data, scales, layout, isMobile);
     attachHoverArea(g, data, scales, layout);
@@ -709,10 +668,7 @@ function init() {
   drawChart();
 }
 
-// index.html charge ce script dans le <head> sans "defer" (comme
-// Rechtsdienst/index.html, dont il est le miroir) : le DOM du <body>
-// (#chart, #legend...) n'existe pas encore au moment ou ce fichier
-// s'execute, donc init() doit attendre DOMContentLoaded plutot que
-// de s'appeler directement ici.
+// Charge sans "defer" : le DOM n'existe pas encore a l'execution,
+// donc on attend DOMContentLoaded plutot que d'appeler init() ici.
 document.addEventListener("DOMContentLoaded", init);
 window.addEventListener("resize", drawChart);

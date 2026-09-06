@@ -8,9 +8,8 @@ const titleLookup = {
   it: "2025: Corsi per genere del corso"
 };
 
-// Plus de 4 catégories : palette fixe à 4 couleurs (petrol, lila,
-// mint, kaki), reprise par cycle dans l'ordre des barres (triées par
-// valeur décroissante) — couleur unie, pas de dégradé.
+// Plus de 4 catégories : palette fixe à 4 couleurs, reprise par cycle
+// dans l'ordre des barres (triées par valeur décroissante).
 const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488"];
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
@@ -172,10 +171,7 @@ function drawChart() {
     data.sort((a, b) => b.value - a.value);
 
     // Hauteur de ligne augmentée pour laisser assez d'air aux labels
-    // trilingues sur 3 lignes (39px était trop juste, les lignes de deux
-    // catégories consécutives se touchaient presque). Marges haut/bas
-    // resserrées pour compenser et garder de la place pour une police
-    // plus lisible malgré les 10 lignes.
+    // trilingues sur 3 lignes ; marges haut/bas resserrées pour compenser.
     const rowHeight = 43;
     const margin = {
       top: 6,

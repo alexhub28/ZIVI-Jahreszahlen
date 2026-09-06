@@ -25,19 +25,15 @@ const legendLookup = {
   ]
 };
 
-// Graphique a 2 variables : petrol (Einsatzbetriebe) + lila
-// (Einsatzplätze), couleurs unies (pas de degrade) - meme paire que le
-// graphique a barres groupees, pour rester coherent visuellement entre
-// les differentes versions du meme jeu de donnees.
+// Petrol (Einsatzbetriebe) + lila (Einsatzplätze), couleurs unies -
+// meme paire que le graphique a barres groupees.
 const BASE_BETRIEBE = "#5A959D"; // accent1 - petrol
 const BASE_PLAETZE = "#A3A8CA";  // accent3 - lila
 
 const MOBILE_BREAKPOINT = 600;
 
-// Largeur maximale de la colonne centrale (noms de domaine) : au-dela,
-// on passe a deux lignes plutot que de rogner l'espace des deux
-// panneaux de barres (utile en francais/italien, ou certains noms de
-// domaine sont tres longs).
+// Largeur max de la colonne centrale (noms de domaine) : au-dela, les
+// noms passent sur deux lignes plutot que de rogner les panneaux de barres.
 const CENTER_LABEL_MAX_DESKTOP = 230;
 const CENTER_LABEL_MAX_MOBILE = 150;
 
@@ -52,13 +48,9 @@ const MIN_BAR_WIDTH = 2;
 
 const VALUE_GAP = 6;
 
-// Echelle independante par panneau (chaque cote va de 0 a son propre
-// maximum*1.12) plutot qu'une echelle partagee : teste, puis ecarte
-// (voir commit precedent) car elle rend les deux panneaux non
-// comparables entre eux (une barre a 2029 et une barre a 8344 peuvent
-// alors avoir une longueur similaire). On revient a l'echelle partagee,
-// qui garde les longueurs de barre directement comparables entre
-// Einsatzbetriebe et Einsatzplaetze malgre le miroir.
+// Echelle independante par panneau : testee puis ecartee car elle rend
+// les deux panneaux non comparables entre eux. Echelle partagee (false)
+// gardee pour que les longueurs de barre restent comparables.
 const INDEPENDENT_SCALES = false;
 
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
@@ -109,11 +101,8 @@ function measureTextWidth(svg, text, fontSize) {
   return w;
 }
 
-// Decoupe un nom de domaine en 1 ou 2 lignes pour tenir dans
-// maxWidth : ajoute les mots un a un tant que la ligne courante tient,
-// sinon passe a la ligne suivante. Au-dela de 2 lignes, le reste est
-// simplement regroupe sur la deuxieme (la hauteur de ligne des lignes
-// est fixe par rowHeight, pas la peine d'aller plus loin ici).
+// Decoupe un nom de domaine en 1 ou 2 lignes pour tenir dans maxWidth ;
+// au-dela de 2 lignes, le reste est regroupe sur la deuxieme.
 function wrapLabelLines(svg, label, maxWidth, fontSize) {
   const words = label.split(" ");
   const probe = svg.append("text")
@@ -144,8 +133,7 @@ function wrapLabelLines(svg, label, maxWidth, fontSize) {
 }
 
 // ============================================================
-// Légende — un item centré au-dessus de chaque panneau (comme les deux
-// colonnes de barres qu'il annonce), plutôt qu'empilée à gauche.
+// Légende — un item centré au-dessus de chaque panneau
 // ============================================================
 
 function drawLegendItem(svg, cx, y, color, label, fontSize) {
@@ -176,19 +164,14 @@ function drawLegendItem(svg, cx, y, color, label, fontSize) {
 // Barres (miroir) + étiquettes de valeur
 // ============================================================
 
-// lengthScale convertit une valeur en LONGUEUR de barre (échelle non
-// inversée, [0, panelWidth]) — le même objet est passé pour les deux
-// côtés, pour que les longueurs restent directement comparables. Le
-// panneau gauche part simplement de panelWidth (bord touchant la
-// colonne des noms) et soustrait cette longueur.
+// lengthScale convertit une valeur en longueur de barre (échelle non
+// inversée) ; le panneau gauche part de panelWidth et soustrait cette longueur.
 function drawSideBars(g, data, y0, lengthScale, panelWidth, color, key, side, isMobile) {
   const barWidth = val => val > 0 ? Math.max(lengthScale(val), MIN_BAR_WIDTH) : 0;
   const barX = val => side === "left" ? panelWidth - barWidth(val) : 0;
 
-  // Départ de l'animation d'apparition : un rectangle/texte de largeur
-  // nulle posé exactement au bord touchant la colonne des noms (à
-  // droite du panneau gauche, à gauche du panneau droit), pour que les
-  // deux côtés grandissent bien depuis le centre vers l'extérieur.
+  // Départ de l'animation : largeur nulle au bord touchant la colonne des
+  // noms, pour que les deux côtés grandissent depuis le centre.
   const startX = side === "left" ? panelWidth : 0;
 
   g.selectAll(`rect.bar-${key}`)
@@ -236,8 +219,7 @@ function drawSideBars(g, data, y0, lengthScale, panelWidth, color, key, side, is
 }
 
 // ============================================================
-// Axe (miroir) — même échelle des deux côtés, ticks qui grandissent en
-// s'éloignant du centre.
+// Axe (miroir) — même échelle des deux côtés
 // ============================================================
 
 function drawSideAxis(g, scale, panelWidth, innerHeight, isMobile) {
@@ -302,9 +284,8 @@ function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg) {
 }
 
 // ============================================================
-// Survol : met en évidence une ligne (les deux barres + le nom),
-// quel que soit le groupe (gauche / centre / droite) dans lequel
-// l'élément survolé se trouve réellement.
+// Survol : met en évidence une ligne (barres + nom) quel que soit le
+// groupe (gauche / centre / droite) survolé.
 // ============================================================
 
 function highlight(svg, label) {
@@ -373,9 +354,8 @@ function drawChart() {
       .attr("width", containerWidth)
       .attr("height", height);
 
-    // --- Colonne centrale : dimensionnée sur le nom de domaine le plus
-    // long (mesuré), plafonnée pour laisser assez de place aux deux
-    // panneaux de barres — au-delà, les noms passent sur deux lignes.
+    // Colonne centrale dimensionnée sur le nom le plus long (mesuré),
+    // plafonnée pour laisser la place aux deux panneaux de barres.
     const centerFontSize = isMobile ? "9.5px" : "10.5px";
     const centerLabelCap = isMobile ? CENTER_LABEL_MAX_MOBILE : CENTER_LABEL_MAX_DESKTOP;
     const rawMaxLabelWidth = d3.max(data, d => measureTextWidth(svg, d.label, centerFontSize));
@@ -388,14 +368,12 @@ function drawChart() {
     const maxPlaetze = d3.max(data, d => d.plaetze);
     const maxVal = Math.max(maxBetriebe, maxPlaetze) * 1.12;
 
-    // rightScale/rightLengthScale sert toujours a convertir une valeur
-    // Einsatzplaetze en longueur de barre (panneau droit) et, en mode
-    // partage, aussi les Einsatzbetriebe (panneau gauche).
+    // rightScale convertit une valeur Einsatzplaetze en longueur de barre
+    // (panneau droit), et aussi Einsatzbetriebe en mode partage.
     const rightScale = d3.scaleLinear().domain([0, INDEPENDENT_SCALES ? maxPlaetze * 1.12 : maxVal]).range([0, panelWidth]);
 
-    // Echelle "longueur" du panneau gauche : partagee avec la droite
-    // (comparabilite directe) ou independante, plafonnee sur son propre
-    // maximum (lisibilite des ecarts entre domaines cote Einsatzbetriebe).
+    // Echelle "longueur" du panneau gauche : partagee avec la droite ou
+    // independante, plafonnee sur son propre maximum.
     const leftLengthScale = INDEPENDENT_SCALES
       ? d3.scaleLinear().domain([0, maxBetriebe * 1.12]).range([0, panelWidth])
       : rightScale;
@@ -421,10 +399,8 @@ function drawChart() {
     const gCenter = svg.append("g").attr("transform", `translate(${centerX}, ${margin.top})`);
     const gRight = svg.append("g").attr("transform", `translate(${rightX}, ${margin.top})`);
 
-    // drawSideBars reçoit un scale "longueur" (non inversé) de chaque
-    // côté — leftLengthScale et rightScale, identiques en mode partagé,
-    // distincts en mode INDEPENDENT_SCALES. leftScale (inversé) ne sert
-    // qu'à positionner les ticks de l'axe gauche (cf. drawSideAxis).
+    // drawSideBars reçoit un scale "longueur" par côté (leftLengthScale,
+    // rightScale) ; leftScale (inversé) ne sert qu'aux ticks de l'axe gauche.
     drawSideBars(gLeft, data, y0, leftLengthScale, panelWidth, BASE_BETRIEBE, "betriebe", "left", isMobile);
     drawSideBars(gRight, data, y0, rightScale, panelWidth, BASE_PLAETZE, "plaetze", "right", isMobile);
     drawSideAxis(gLeft, leftScale, panelWidth, innerHeight, isMobile);

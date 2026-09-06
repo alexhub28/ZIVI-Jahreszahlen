@@ -143,9 +143,8 @@ function drawAnnLabel(col, d, scales, layout, isMobile) {
   const barW = x.bandwidth();
   const yAnnTop = y(d.ann);
 
-  // Valeurs Angekündigt / Unangekündigt : masquées par défaut,
-  // révélées uniquement au survol de la colonne (cf. highlight()).
-  // Position à l'intérieur du segment s'il est assez grand, sinon juste au-dessus.
+  // Valeurs masquées par défaut, révélées au survol (cf. highlight()).
+  // Position à l'intérieur du segment s'il est assez grand, sinon au-dessus.
   const annHeight = innerHeight - yAnnTop;
   const annInside = annHeight > 26;
   const annFontSize = isMobile ? 10.5 : 12.5;

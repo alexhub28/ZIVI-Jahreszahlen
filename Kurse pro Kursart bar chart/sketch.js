@@ -167,6 +167,7 @@ function drawChart() {
 
     const data = raw.map(d => ({ label: d.Label, value: +d.Value }));
     const total = d3.sum(data, d => d.value);
+    const maxVal = d3.max(data, d => d.value);
 
     data.sort((a, b) => b.value - a.value);
 

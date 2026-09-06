@@ -29,6 +29,8 @@ Die Grafiken sind mit D3.js (Version 7) programmiert, einer JavaScript-Bibliothe
 - [**Kurse pro Kursart (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse%20pro%20Kursart%20pie%20chart/) — Anzahl Kurse nach Kursart
 - [**Rechtsdienst (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst/) — Disziplinarentscheide pro Jahr
 - [**Rechtsdienst (stacked bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst%20empil%C3%A9/) — Disziplinarentscheide pro Jahr, Art. 73/74 + Art. 76 gestapelt, Strafanzeigen und Strafbefehle separat
+- [**Zeitpunkt der Gesuchseinreichung (bubble chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zeitpunkt%20Gesuchseinreichung/) — Zeitpunkt der Gesuchseinreichung im Verhältnis zur Rekrutenschule, Vergleich 2024/2025
+- [**Zeitpunkt der Gesuchseinreichung (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zeitpunkt%20Gesuchseinreichung%20bar%20chart/) — Zeitpunkt der Gesuchseinreichung im Verhältnis zur Rekrutenschule, Vergleich 2024/2025
 
 ## Quellen
 
@@ -67,6 +69,8 @@ Les graphiques sont codés avec D3.js (version 7), une bibliothèque JavaScript 
 - [**Kurse pro Kursart (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse%20pro%20Kursart%20pie%20chart/) — Nombre de cours par genre de cours
 - [**Rechtsdienst (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst/) — Décisions disciplinaires par année
 - [**Rechtsdienst (stacked bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst%20empil%C3%A9/) — Décisions disciplinaires par année, art. 73/74 + art. 76 empilées, plaintes pénales et ordonnances pénales séparées
+- [**Zeitpunkt der Gesuchseinreichung (bubble chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zeitpunkt%20Gesuchseinreichung/) — Moment du dépôt de la demande par rapport à l'école de recrues, comparaison 2024/2025
+- [**Zeitpunkt der Gesuchseinreichung (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zeitpunkt%20Gesuchseinreichung%20bar%20chart/) — Moment du dépôt de la demande par rapport à l'école de recrues, comparaison 2024/2025
 
 ## Sources
 

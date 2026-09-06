@@ -91,8 +91,6 @@ function createScales(data, layout) {
     .domain([0, maxVal * Y_AXIS_HEADROOM])
     .range([layout.innerHeight, 0]);
 
-  // Plus utilisee depuis l'aplat petrol unique (getBarColor ignore
-  // ses parametres) - gardee au cas ou un degrade reviendrait.
   const colorScale = d3.scaleLinear().domain([minVal, maxVal]).range([0, 1]);
 
   return { x, y, colorScale };

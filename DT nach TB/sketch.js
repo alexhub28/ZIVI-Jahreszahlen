@@ -10,9 +10,9 @@ const titleLookup = {
 
 // Titre de l'axe X, une seule langue a la fois.
 const axisTitleLookup = {
-  de: "Diensttage",
-  fr: "Jours de service",
-  it: "Giorni di servizio"
+  de: "Anzahl der geleisteten Diensttage",
+  fr: "Nombre de jours de service accomplis",
+  it: "Numero di giorni di servizio prestati"
 };
 
 // Plus de 4 domaines : palette fixe à 4 couleurs, cyclée par ordre

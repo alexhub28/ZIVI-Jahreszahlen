@@ -8,9 +8,9 @@ const titleLookup = {
   it: "2025: Corsi per genere del corso"
 };
 
-// Plus de 4 catégories : palette fixe à 4 couleurs, reprise par cycle
-// dans l'ordre des parts (triées par valeur décroissante).
-const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488"];
+// Plus de 5 catégories : palette fixe à 5 couleurs (comme Rechtsdienst),
+// reprise par cycle dans l'ordre des parts (triées par valeur décroissante).
+const PALETTE = ["#5A959D", "#A3A8CA", "#CAE7EA", "#B1B488", "#FCEB30"];
 
 const MOBILE_BREAKPOINT = 600;
 

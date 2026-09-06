@@ -140,7 +140,8 @@ function drawSlices(g, arcs, colorFor, arc) {
   return item;
 }
 
-// --- Grandes parts : valeur + % empiles au centre de la part ---
+// --- Grandes parts : % au centre de la part ; la valeur brute apparait
+// au-dessus uniquement au survol (cf. attachPieHover). ---
 function drawInnerLabels(item, innerLabelArc, isMobile) {
   const bigItems = item.filter(d => d.data.Percent >= INNER_LABEL_MIN_PERCENT);
 
@@ -154,16 +155,19 @@ function drawInnerLabels(item, innerLabelArc, isMobile) {
   );
 
   innerLabels.append("tspan")
+    .attr("class", "pct-value")
     .attr("x", 0)
     .attr("dy", "-0.15em")
-    .text(d => formatSwiss(d.data.Value));
+    .text(d => formatPercent(d.data.Percent));
 
   innerLabels.append("tspan")
+    .attr("class", "count-value")
     .attr("x", 0)
     .attr("dy", "1.2em")
     .style("font-weight", "normal")
     .style("font-size", isMobile ? "9.5px" : "11px")
-    .text(d => formatPercent(d.data.Percent));
+    .style("opacity", 0)
+    .text(d => formatSwiss(d.data.Value));
 
   innerLabels.transition()
     .delay((d, i) => i * 55 + 350)
@@ -246,6 +250,8 @@ function drawOuterSwatches(smallItems, colorFor, labelY, outerRadius, swatchSize
     .style("opacity", 1);
 }
 
+// --- Petites parts : % sur une ligne, reliees par un trait ; la valeur
+// brute entre parentheses n'apparait qu'au survol (cf. attachPieHover). ---
 function drawOuterLabels(smallItems, labelY, outerRadius, isMobile, swatchSize, swatchGap) {
   const outerLabels = styleLabelText(
     smallItems.append("text")
@@ -260,7 +266,7 @@ function drawOuterLabels(smallItems, labelY, outerRadius, isMobile, swatchSize, 
       .style("opacity", 0)
   );
 
-  outerLabels.text(d => `${formatSwiss(d.data.Value)} ${formatPercent(d.data.Percent)}`);
+  outerLabels.text(d => formatPercent(d.data.Percent));
 
   outerLabels.transition()
     .delay((d, i) => i * 55 + 350)
@@ -279,14 +285,18 @@ function attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile) {
     .style("fill", "#000")
     .style("opacity", 0);
 
-  // Survol : entoure toute la part (secteur + ligne de rappel). raise()
-  // ramene le groupe au premier plan, sinon le contour blanc de la part
-  // suivante le recouvrait partiellement.
+  // Survol : entoure toute la part (secteur + ligne de rappel) et revele
+  // la valeur brute (tspan cachee pour les grandes parts, ajoutee entre
+  // parentheses pour les petites). raise() ramene le groupe au premier
+  // plan, sinon le contour blanc de la part suivante le recouvrait
+  // partiellement.
   item
     .on("mouseover", function (event, d) {
       const node = d3.select(this).raise();
       node.select("path.slice").attr("stroke", "#000").attr("stroke-width", 1.5);
       node.select("polyline.leader").attr("stroke", "#333").attr("stroke-width", 1.5);
+      node.select("tspan.count-value").transition().duration(150).style("opacity", 1);
+      node.select("text.outer-label").text(`${formatPercent(d.data.Percent)} (${formatSwiss(d.data.Value)})`);
 
       const isBig = d.data.Percent >= INNER_LABEL_MIN_PERCENT;
       if (isBig) {
@@ -304,10 +314,12 @@ function attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile) {
       }
       nameLabel.text(d.data.Label).style("opacity", 1);
     })
-    .on("mouseout", function () {
+    .on("mouseout", function (event, d) {
       const node = d3.select(this);
       node.select("path.slice").attr("stroke", "#fff").attr("stroke-width", 1.5);
       node.select("polyline.leader").attr("stroke", "#999").attr("stroke-width", 1);
+      node.select("tspan.count-value").transition().duration(150).style("opacity", 0);
+      node.select("text.outer-label").text(formatPercent(d.data.Percent));
       nameLabel.style("opacity", 0);
     });
 }

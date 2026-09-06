@@ -69,7 +69,8 @@ function drawBars(g, data, x, y, barColor) {
     .attr("width", d => x(d.value));
 }
 
-// --- Étiquette "valeur · %" au bout de chaque barre, compteur animé ---
+// --- Étiquette "%" au bout de chaque barre, compteur animé ; la valeur
+// brute s'affiche entre parenthèses uniquement au survol de la ligne. ---
 function drawValueLabels(g, data, x, y, total, isMobile) {
   const valueLabels = g.selectAll("text.value")
     .data(data)
@@ -82,19 +83,24 @@ function drawValueLabels(g, data, x, y, total, isMobile) {
     .style("font-family", "Arial")
     .style("font-size", isMobile ? "10px" : "12px")
     .style("font-weight", "normal")
-    .style("fill", "#111")
-    .text("0");
+    .style("fill", "#111");
+
+  valueLabels.append("tspan").attr("class", "pct-value").text("0 %");
+  valueLabels.append("tspan")
+    .attr("class", "count-value")
+    .style("opacity", 0)
+    .text(d => ` (${formatSwiss(d.value)})`);
 
   valueLabels.transition()
     .delay((d, i) => i * 80)
     .duration(800)
     .ease(d3.easeCubicOut)
     .attr("x", d => x(d.value) + 8)
-    .textTween(function (d) {
-      const iVal = d3.interpolateNumber(0, d.value);
+    .tween("text", function (d) {
       const pct = (d.value / total) * 100;
       const iPct = d3.interpolateNumber(0, pct);
-      return t => `${formatSwiss(iVal(t))} · ${formatPercent(iPct(t))}`;
+      const pctSpan = d3.select(this).select("tspan.pct-value");
+      return t => pctSpan.text(formatPercent(iPct(t)));
     });
 }
 
@@ -120,11 +126,16 @@ function drawRowLabels(g, data, y, isMobile) {
 // Interaction
 // ============================================================
 
-// --- Survol par ligne : met en évidence label + barre + valeur ---
+// --- Survol par ligne : met en évidence label + barre + valeur, révèle
+// la valeur brute entre parenthèses (cachée par défaut). ---
 function highlight(g, label) {
   g.selectAll(".bar, .value")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3);
+
+  g.selectAll(".count-value")
+    .transition().duration(150)
+    .style("opacity", d => (label !== null && d.label === label) ? 1 : 0);
 
   // Label survolé : noir plus franc + gras (pas d'agrandissement,
   // pour ne pas risquer de chevaucher les lignes voisines).

@@ -3,9 +3,9 @@
 // ============================================================
 
 const titleLookup = {
-  de: "Zeitpunkt der Gesuchseinreichung",
-  fr: "Moment du dépôt de la demande",
-  it: "Momento di presentazione della domanda"
+  de: "Zeitpunkt der Gesuchseinreichung von zugelassenen Zivis",
+  fr: "Moment du dépôt de la demande des civilistes admis",
+  it: "Momento di presentazione della domanda dei civilisti ammessi"
 };
 
 // Ordre des catégories = ordre d'affichage (du haut vers le bas).

@@ -47,8 +47,8 @@ const COLOR_2025 = "#A3A8CA"; // accent3 — lila
 // de sa bulle (l'étiquette reste au-dessus).
 // LILA_LABEL_GAP : distance entre l'étiquette du lila (2025) et le bord
 // droit de sa bulle (l'étiquette est placée à côté, pas au-dessus).
-const PETROL_LABEL_GAP = 16;
-const LILA_LABEL_GAP = 6;
+const PETROL_LABEL_GAP = 10;
+const LILA_LABEL_GAP = 4;
 
 // Légère animation continue ("respiration") des bulles, une fois leur
 // apparition terminée : mouvement horizontal, chaque bulle s'écartant
@@ -61,11 +61,11 @@ const BUBBLE_FLOAT_DURATION = 2000;
 // _Y_OFFSET : négatif = remonte le texte, positif = le descend.
 // _X_OFFSET : négatif = vers la gauche, positif = vers la droite.
 // 0 ou absent = position automatique inchangée.
-const PCT_PETROL_Y_OFFSET = { vor_rs: -45, nach_beginn: -28, nach_bestanden: -40 };
-const PCT_PETROL_X_OFFSET = { vor_rs: 25, nach_beginn: 20, nach_bestanden: 25 };
+const PCT_PETROL_Y_OFFSET = { vor_rs: -24, nach_beginn: -15, nach_bestanden: -22 };
+const PCT_PETROL_X_OFFSET = { vor_rs: 13, nach_beginn: 11, nach_bestanden: 13 };
 
 // Même principe que ci-dessus, mais pour le pourcentage lila (2025).
-const PCT_LILA_Y_OFFSET = { vor_rs: -35, nach_beginn: -28, nach_bestanden: -32 };
+const PCT_LILA_Y_OFFSET = { vor_rs: -19, nach_beginn: -15, nach_bestanden: -17 };
 const PCT_LILA_X_OFFSET = { vor_rs: 0, nach_beginn: 0, nach_bestanden: 0 };
 
 // ============================================================
@@ -190,15 +190,15 @@ function drawChart() {
     const margin = {
       top: legendHeight + 10,
       right: isMobile ? 90 : 140,
-      bottom: 28,
+      bottom: 12,
       left: 10 + maxLabelWidth + (isMobile ? 20 : 30)
     };
 
     const innerWidth = width - margin.left - margin.right;
-    // Lignes assez hautes pour des bulles de la taille d'un pie chart,
-    // avec un pourcentage lisible à l'intérieur même pour les plus
-    // petites valeurs.
-    const rowHeight = isMobile ? 195 : 250;
+    // Compact pour tenir dans le cadre LivingDocs (max 1000×500px, cf.
+    // index.html) sans scroll vertical, tout en gardant le pourcentage
+    // lisible à l'intérieur des bulles.
+    const rowHeight = isMobile ? 105 : 122;
     const innerHeight = data.length * rowHeight;
     const height = margin.top + innerHeight + margin.bottom;
 
@@ -264,7 +264,7 @@ function drawChart() {
 
     // Rayon proportionnel à la valeur (échelle racine carrée, pour que
     // l'AIRE du cercle — pas son diamètre — reste proportionnelle).
-    const r = d3.scaleSqrt().domain([0, maxVal]).range([34, isMobile ? 58 : 78]);
+    const r = d3.scaleSqrt().domain([0, maxVal]).range([18, isMobile ? 31 : 42]);
 
     // Grille verticale discrète en arrière-plan, alignée sur les mêmes
     // graduations que l'axe du bas.
@@ -366,7 +366,7 @@ function drawChart() {
       // opposée pour rester lisible. Taille fixe (pas proportionnelle
       // au rayon) : petites et grandes bulles portent un pourcentage de
       // même poids visuel.
-      const pctFontSize = isMobile ? 10.5 : 12.5;
+      const pctFontSize = isMobile ? 9 : 10.5;
 
       // La bulle petrol (2024) est dessinée en dessous de la bulle lila
       // (2025) : quand elles se chevauchent, sa moitié droite est

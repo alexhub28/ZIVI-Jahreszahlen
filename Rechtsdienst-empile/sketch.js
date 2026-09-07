@@ -3,9 +3,9 @@
 // ============================================================
 
 const titleLookup = {
-  de: "Disziplinarentscheide (gestapelt)",
-  fr: "Décisions disciplinaires (empilées)",
-  it: "Decisioni disciplinari (impilate)"
+  de: "Disziplinarentscheide",
+  fr: "Décisions disciplinaires",
+  it: "Decisioni disciplinari"
 };
 
 // STACK_SERIES = les 2 categories empilees dans la colonne "combo"

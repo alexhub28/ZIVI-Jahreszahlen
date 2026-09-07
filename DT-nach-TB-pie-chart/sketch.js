@@ -28,6 +28,23 @@ const INNER_LABEL_MIN_PERCENT = 2;
 // proportionnelle au nombre de jours de service de son domaine.
 const PACK_PADDING = 14;
 
+// Légère animation continue ("respiration") des bulles, une fois leur
+// apparition terminée : chaque bulle oscille doucement dans une
+// direction qui lui est propre (cf. FLOAT_DIRECTIONS), sans jamais
+// empiéter sur l'écart minimal entre deux bulles garanti par
+// PACK_PADDING (14px) — amplitude volontairement faible pour rester
+// sûre même si deux bulles voisines se rapprochaient en même temps
+// (pire cas : 2 x amplitude < PACK_PADDING).
+const BUBBLE_FLOAT_AMPLITUDE = 3;
+const BUBBLE_FLOAT_DURATION = 2200;
+
+// 8 directions cycliques (index % 8), pour que les bulles voisines ne
+// flottent pas toutes de façon synchronisée dans le même sens.
+const FLOAT_DIRECTIONS = [
+  [1, 0], [0.7, 0.7], [0, 1], [-0.7, 0.7],
+  [-1, 0], [-0.7, -0.7], [0, -1], [0.7, -0.7]
+];
+
 const TOOLTIP_PAD_X = 10;
 const TOOLTIP_PAD_Y = 8;
 
@@ -166,6 +183,42 @@ function drawPercentLabels(bubble, isMobile) {
     .style("opacity", 1);
 }
 
+// Fait flotter doucement un groupe entre deux positions (transform
+// SVG), en va-et-vient infini. Le délai initial permet d'attendre la
+// fin de l'animation d'entrée de la bulle avant de démarrer.
+function floatLoop(selection, transformA, transformB, duration, initialDelay) {
+  function cycle() {
+    selection
+      .transition()
+      .duration(duration)
+      .ease(d3.easeSinInOut)
+      .attr("transform", transformA)
+      .transition()
+      .duration(duration)
+      .ease(d3.easeSinInOut)
+      .attr("transform", transformB)
+      .on("end", cycle);
+  }
+
+  selection.transition().delay(initialDelay).on("end", cycle);
+}
+
+// Démarre le flottement d'une bulle : direction propre à son index,
+// durée et délai légèrement décalés pour que les bulles ne bougent
+// pas toutes en même temps.
+function startBubbleFloat(pulse, i) {
+  const [dx, dy] = FLOAT_DIRECTIONS[i % FLOAT_DIRECTIONS.length];
+  const ax = (dx * BUBBLE_FLOAT_AMPLITUDE).toFixed(2);
+  const ay = (dy * BUBBLE_FLOAT_AMPLITUDE).toFixed(2);
+  floatLoop(
+    pulse,
+    `translate(${-ax}, ${-ay})`,
+    `translate(${ax}, ${ay})`,
+    BUBBLE_FLOAT_DURATION + i * 60,
+    i * 90 + 900
+  );
+}
+
 function drawBubbleShapes(g, nodes, colorFor, isMobile) {
   const bubble = g.selectAll("g.bubble")
     .data(nodes)
@@ -175,8 +228,8 @@ function drawBubbleShapes(g, nodes, colorFor, isMobile) {
     .attr("transform", d => `translate(${d.x}, ${d.y})`)
     .style("cursor", "pointer");
 
-  // Pas d'oscillation ici : bulles trop inégales/serrées, ça les
-  // ferait se chevaucher. "pulse" ne fait plus que grouper cercle+texte.
+  // "pulse" groupe cercle + texte : c'est ce groupe qui flotte
+  // légèrement une fois l'apparition terminée (cf. startBubbleFloat).
   const pulse = bubble.append("g").attr("class", "pulse");
 
   pulse.append("circle")
@@ -192,6 +245,10 @@ function drawBubbleShapes(g, nodes, colorFor, isMobile) {
     .attr("r", d => d.r);
 
   drawPercentLabels(pulse, isMobile);
+
+  pulse.each(function (d, i) {
+    startBubbleFloat(d3.select(this), i);
+  });
 
   return bubble;
 }

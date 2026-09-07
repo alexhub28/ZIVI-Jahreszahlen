@@ -110,7 +110,7 @@ function createTooltip(svg, width) {
 
   function showTooltip(event, d) {
     const [mx, my] = d3.pointer(event, svg.node());
-    tooltipText.text(`${d.year} – ${formatSwiss(d.value)}`);
+    tooltipText.text(`${d.year}: ${formatSwiss(d.value)}`);
 
     const bbox = tooltipText.node().getBBox();
     const padX = 10, padY = 7;

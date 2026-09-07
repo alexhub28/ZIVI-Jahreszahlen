@@ -298,7 +298,7 @@ function fillTooltipText(tooltipText, d) {
   tooltipText.append("tspan")
     .attr("x", TOOLTIP_PAD_X)
     .attr("dy", 0)
-    .text(`${d.year} – ${formatSwiss(d.value)}`);
+    .text(`${d.year}: ${formatSwiss(d.value)}`);
 
   // Uniquement le texte de la langue courante (?lang=) — jamais les
   // trois langues ensemble.

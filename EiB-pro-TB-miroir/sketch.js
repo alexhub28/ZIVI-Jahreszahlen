@@ -3,9 +3,9 @@
 // ============================================================
 
 const titleLookup = {
-  de: "Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich",
-  fr: "Établissements et places d'affectation par domaine d'activité",
-  it: "Istituti e posti d'impiego per ambito di attività"
+  de: "2025: Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich",
+  fr: "2025 : Établissements et places d'affectation par domaine d'activité",
+  it: "2025: Istituti e posti d'impiego per ambito di attività"
 };
 
 // Une seule langue affichee a la fois (selon ?lang=), jamais les trois

@@ -407,10 +407,6 @@ function drawChart() {
         .style("font-size", pctFontSize + "px")
         .style("font-weight", "bold")
         .style("fill", "#3D3F66")
-        .style("paint-order", "stroke")
-        .style("stroke", "#fff")
-        .style("stroke-width", "3px")
-        .style("stroke-linejoin", "round")
         .style("opacity", 0)
         .text(formatPercent(d.y2025.percent));
 

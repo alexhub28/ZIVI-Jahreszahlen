@@ -25,7 +25,7 @@ Die Grafiken sind mit D3.js (Version 7) programmiert, einer JavaScript-Bibliothe
 - [**Einsatzbetriebe und Einsatzplätze (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Einsatzbetriebe-und-Einsatzplaetze/) — Anzahl Einsatzbetriebe und Einsatzplätze pro Jahr
 - [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB/) — Anzahl Einsatzbetriebe und Einsatzplätze nach Tätigkeitsbereich
 - [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (mirror chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB-miroir/) — Anzahl Einsatzbetriebe und Einsatzplätze nach Tätigkeitsbereich
-- [**Inspektionen**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Inspektionen/) — Anzahl angekündigter / unangekündigter Inspektionen
+- [**Inspektionen (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Inspektionen/) — Anzahl angekündigter / unangekündigter Inspektionen
 - [**Anzahl Kurse (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Anzahl-Kurse/) — Anzahl Kurse pro Jahr
 - [**Kurse pro Kursart (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse-pro-Kursart-bar-chart/) — Anzahl Kurse nach Kursart
 - [**Kurse pro Kursart (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse-pro-Kursart-pie-chart/) — Anzahl Kurse nach Kursart
@@ -65,7 +65,7 @@ Les graphiques sont codés avec D3.js (version 7), une bibliothèque JavaScript 
 - [**Einsatzbetriebe und Einsatzplätze (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Einsatzbetriebe-und-Einsatzplaetze/) — Nombre d'établissements et de places d'affectation par année
 - [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB/) — Nombre d'établissements et de places d'affectation par domaine d'activité
 - [**Einsatzbetriebe und Einsatzplätze pro Tätigkeitsbereich (mirror chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/EiB-pro-TB-miroir/) — Nombre d'établissements et de places d'affectation par domaine d'activité
-- [**Inspektionen**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Inspektionen/) — Nombre d'inspections annoncées / non annoncées
+- [**Inspektionen (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Inspektionen/) — Nombre d'inspections annoncées / non annoncées
 - [**Anzahl Kurse (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Anzahl-Kurse/) — Nombre de cours par année
 - [**Kurse pro Kursart (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse-pro-Kursart-bar-chart/) — Nombre de cours par genre de cours
 - [**Kurse pro Kursart (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse-pro-Kursart-pie-chart/) — Nombre de cours par genre de cours

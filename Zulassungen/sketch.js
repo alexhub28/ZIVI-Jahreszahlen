@@ -94,6 +94,13 @@ function formatSwiss(n) {
   return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
 }
 
+// Espace (insecable) avant ":" en francais uniquement (typographie FR),
+// aucune espace en allemand/italien.
+function formatYearValue(year, value) {
+  const sep = currentLang === "fr" ? "\u00A0: " : ": ";
+  return `${year}${sep}${value}`;
+}
+
 // ============================================================
 // Layout & scales
 // ============================================================
@@ -298,7 +305,7 @@ function fillTooltipText(tooltipText, d) {
   tooltipText.append("tspan")
     .attr("x", TOOLTIP_PAD_X)
     .attr("dy", 0)
-    .text(`${d.year}: ${formatSwiss(d.value)}`);
+    .text(formatYearValue(d.year, formatSwiss(d.value)));
 
   // Uniquement le texte de la langue courante (?lang=) — jamais les
   // trois langues ensemble.

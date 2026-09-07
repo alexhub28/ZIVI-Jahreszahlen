@@ -41,6 +41,13 @@ function formatSwiss(n) {
   return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
 }
 
+// --- Espace (insecable) avant ":" en francais uniquement (typographie
+// FR), aucune espace en allemand/italien. ---
+function formatYearValue(year, value) {
+  const sep = currentLang === "fr" ? "\u00A0: " : ": ";
+  return `${year}${sep}${value}`;
+}
+
 // --- Axe des y (0 à 2'000'000) avec repères discrets ---
 function drawYAxis(g, y, innerWidth, isMobile) {
   const yTicks = [0, 500000, 1000000, 1500000, 2000000];
@@ -110,7 +117,7 @@ function createTooltip(svg, width) {
 
   function showTooltip(event, d) {
     const [mx, my] = d3.pointer(event, svg.node());
-    tooltipText.text(`${d.year}: ${formatSwiss(d.value)}`);
+    tooltipText.text(formatYearValue(d.year, formatSwiss(d.value)));
 
     const bbox = tooltipText.node().getBBox();
     const padX = 10, padY = 7;

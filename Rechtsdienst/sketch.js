@@ -279,7 +279,7 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
     const mainLabel = groups.append("text")
       .attr("class", `value-main value-${s.key}`)
       .attr("x", x1(s.key) + x1.bandwidth() / 2)
-      .attr("y", d => yLeft(d[s.key]) - 20)
+      .attr("y", d => yLeft(d[s.key]) - 11)
       .attr("text-anchor", "middle")
       .style("font-family", "Arial")
       .style("font-size", isMobile ? "10.5px" : "12.5px")
@@ -304,7 +304,7 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
     groups.append("text")
       .attr("class", `value-intern value-${s.key}`)
       .attr("x", x1(s.key) + x1.bandwidth() / 2)
-      .attr("y", d => yLeft(d[s.key]) - 8)
+      .attr("y", d => yLeft(d[s.key]) - 4)
       .attr("text-anchor", "middle")
       .style("font-family", "Arial")
       .style("font-size", isMobile ? "10px" : "11.5px")
@@ -417,7 +417,7 @@ function drawChart() {
     const margin = {
       top: 20,
       right: isMobile ? 56 : 78,
-      bottom: 40,
+      bottom: 28,
       left: isMobile ? 60 : 84
     };
 
@@ -426,7 +426,7 @@ function drawChart() {
     const innerWidth = Math.max(containerInnerWidth, minInnerWidth);
     const width = innerWidth + margin.left + margin.right;
 
-    const innerHeight = isMobile ? 380 : 480;
+    const innerHeight = isMobile ? 210 : 260;
     const height = margin.top + innerHeight + margin.bottom;
 
     const svg = d3.select("#chart")

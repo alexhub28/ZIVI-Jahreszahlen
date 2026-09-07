@@ -149,7 +149,7 @@ function computeLayout(containerWidth, isMobile) {
   };
 
   const innerWidth = containerWidth - margin.left - margin.right;
-  const innerHeight = 320;
+  const innerHeight = isMobile ? 240 : 280;
   const width = containerWidth;
   const height = margin.top + innerHeight + margin.bottom;
 

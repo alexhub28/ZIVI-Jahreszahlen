@@ -410,7 +410,9 @@ function drawValuePair(g, d, cx, yBarTop, mainText, internText, delay, isMobile)
     .duration(300)
     .style("opacity", 1);
 
-  const internLabel = g.append("text")
+  // Valeur entre parenthèses : masquée par défaut, révélée uniquement
+  // au survol de son année (cf. highlightColumn).
+  g.append("text")
     .attr("class", "value-intern total")
     .datum(d)
     .attr("x", cx)
@@ -421,11 +423,6 @@ function drawValuePair(g, d, cx, yBarTop, mainText, internText, delay, isMobile)
     .style("fill", "#888")
     .style("opacity", 0)
     .text(`(${internText})`);
-
-  internLabel.transition()
-    .delay(delay + 150)
-    .duration(300)
-    .style("opacity", 1);
 }
 
 // Badge petrol opaque derriere le texte quand le segment est trop
@@ -498,7 +495,9 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
       .style("fill", mainColor)
       .text(mainText);
 
+    // Masquée par défaut, révélée uniquement au survol de son année.
     group.append("text")
+      .attr("class", "segval-intern")
       .attr("x", labelX)
       .attr("y", labelY + 8)
       .attr("text-anchor", "middle")
@@ -506,6 +505,7 @@ function drawComboSegmentLabels(g, d, i, scales, isMobile) {
       .style("font-family", "Arial")
       .style("font-size", (fontSize - 1.5) + "px")
       .style("fill", internColor)
+      .style("opacity", 0)
       .text(internText);
   });
 }
@@ -584,8 +584,20 @@ function highlightColumn(g, year, hoverDot, data, scales) {
     .transition()
     .duration(150)
     .style("opacity", function () {
-      const d = d3.select(this).datum();
+      const sel = d3.select(this);
+      const d = sel.datum();
+      if (sel.classed("value-intern")) {
+        return (year !== null && d && d.year === year) ? 1 : 0;
+      }
       return (year === null || (d && d.year === year)) ? 1 : 0.3;
+    });
+
+  g.selectAll(".segval-intern")
+    .transition()
+    .duration(150)
+    .style("opacity", function () {
+      const d = d3.select(this).datum();
+      return (year !== null && d && d.year === year) ? 1 : 0;
     });
 
   g.selectAll("text.label")

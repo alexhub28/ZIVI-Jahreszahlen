@@ -300,7 +300,8 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
         return t => { this.textContent = formatSwiss(iVal(t)); };
       });
 
-    // Valeur interne entre parenthèses, plus discrète
+    // Valeur interne entre parenthèses : masquée par défaut, révélée
+    // uniquement au survol de son année (cf. attachHoverInteraction).
     groups.append("text")
       .attr("class", `value-intern value-${s.key}`)
       .attr("x", x1(s.key) + x1.bandwidth() / 2)
@@ -314,11 +315,7 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
       .style("stroke-width", "3px")
       .style("stroke-linejoin", "round")
       .style("opacity", 0)
-      .text(d => `(${formatSwiss(d[s.internKey])})`)
-      .transition()
-      .delay((d, i) => i * 90 + si * 40 + 500)
-      .duration(300)
-      .style("opacity", 1);
+      .text(d => `(${formatSwiss(d[s.internKey])})`);
   });
 }
 
@@ -341,6 +338,9 @@ function attachHoverInteraction(g, data, scales, innerHeight, margin) {
   function highlight(year) {
     g.selectAll(".year-group").transition().duration(150)
       .style("opacity", d => (year === null || d.year === year) ? 1 : 0.3);
+
+    g.selectAll(".value-intern").transition().duration(150)
+      .style("opacity", d => (year !== null && d.year === year) ? 1 : 0);
 
     if (year === null) {
       hoverDot.style("opacity", 0);

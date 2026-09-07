@@ -19,7 +19,7 @@ Die Grafiken sind mit D3.js (Version 7) programmiert, einer JavaScript-Bibliothe
 - [**Zulassungen (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zulassungen/) — Anzahl Zulassungen pro Jahr
 - [**Geleistete Diensttage (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Geleistete-DT/) — Anzahl geleisteter Diensttage pro Jahr
 - [**Diensttage nach Tätigkeitsbereich (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/DT-nach-TB/) — Anzahl geleisteter Diensttage nach Tätigkeitsbereich
-- [**Diensttage nach Tätigkeitsbereich (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/DT-nach-TB-pie-chart/) — Anzahl geleisteter Diensttage nach Tätigkeitsbereich
+- [**Diensttage nach Tätigkeitsbereich (bubble chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/DT-nach-TB-pie-chart/) — Anzahl geleisteter Diensttage nach Tätigkeitsbereich
 - [**Zeitpunkt der Gesuchseinreichung (bubble chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zeitpunkt-Gesuchseinreichung/) — Zeitpunkt der Gesuchseinreichung im Verhältnis zur Rekrutenschule, Vergleich 2024/2025
 - [**Zeitpunkt der Gesuchseinreichung (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zeitpunkt-Gesuchseinreichung-bar-chart/) — Zeitpunkt der Gesuchseinreichung im Verhältnis zur Rekrutenschule, Vergleich 2024/2025
 - [**Einsatzbetriebe und Einsatzplätze (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Einsatzbetriebe-und-Einsatzplaetze/) — Anzahl Einsatzbetriebe und Einsatzplätze pro Jahr
@@ -59,7 +59,7 @@ Les graphiques sont codés avec D3.js (version 7), une bibliothèque JavaScript 
 - [**Zulassungen (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zulassungen/) — Nombre d'admissions par année
 - [**Geleistete Diensttage (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Geleistete-DT/) — Nombre de jours de service effectués par année
 - [**Diensttage nach Tätigkeitsbereich (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/DT-nach-TB/) — Nombre de jours de service accomplis par domaine d'activité
-- [**Diensttage nach Tätigkeitsbereich (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/DT-nach-TB-pie-chart/) — Nombre de jours de service accomplis par domaine d'activité
+- [**Diensttage nach Tätigkeitsbereich (bubble chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/DT-nach-TB-pie-chart/) — Nombre de jours de service accomplis par domaine d'activité
 - [**Zeitpunkt der Gesuchseinreichung (bubble chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zeitpunkt-Gesuchseinreichung/) — Moment du dépôt de la demande par rapport à l'école de recrues, comparaison 2024/2025
 - [**Zeitpunkt der Gesuchseinreichung (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Zeitpunkt-Gesuchseinreichung-bar-chart/) — Moment du dépôt de la demande par rapport à l'école de recrues, comparaison 2024/2025
 - [**Einsatzbetriebe und Einsatzplätze (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Einsatzbetriebe-und-Einsatzplaetze/) — Nombre d'établissements et de places d'affectation par année

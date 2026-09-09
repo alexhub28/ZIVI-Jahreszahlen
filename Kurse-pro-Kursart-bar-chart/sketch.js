@@ -108,6 +108,30 @@ function drawValueLabels(g, data, x, y, total, isMobile) {
 const ROW_LABEL_FONT_SIZE = { mobile: "10px", desktop: "12px" };
 const ROW_LABEL_FONT_SIZE_HOVER = { mobile: "12.5px", desktop: "14.5px" };
 
+// --- Mesure le plus long label pour dimensionner la colonne de gauche
+// au plus juste (texte temporaire mesuré puis retiré) — même pattern
+// que DT-nach-TB, pour ne jamais déborder du cadre SVG (cf. le bug de
+// débordement en mobile corrigé le 09.09.2026 : la marge de gauche
+// était fixe et trop étroite pour le libellé le plus long). ---
+function measureMaxLabelWidth(svg, data, fontSize) {
+  const probe = svg.append("text")
+    .attr("class", "label-probe")
+    .style("font-family", "Arial")
+    .style("font-size", fontSize)
+    .style("font-weight", "normal")
+    .style("opacity", 0);
+
+  let maxWidth = 0;
+  data.forEach(d => {
+    probe.text(d.label);
+    const w = probe.node().getComputedTextLength();
+    if (w > maxWidth) maxWidth = w;
+  });
+
+  probe.remove();
+  return maxWidth;
+}
+
 // --- Labels à gauche (une seule langue par CSV) ---
 function drawRowLabels(g, data, y, isMobile) {
   g.selectAll("text.label")
@@ -213,21 +237,32 @@ function drawChart() {
     // Hauteur de ligne augmentée pour laisser assez d'air aux labels
     // trilingues sur 3 lignes ; marges haut/bas resserrées pour compenser.
     const rowHeight = 43;
-    const margin = {
-      top: 6,
-      right: isMobile ? 70 : 110,
-      bottom: 6,
-      left: isMobile ? 190 : 420
-    };
+    const marginTop = 6;
+    const marginBottom = 6;
+    const marginRight = isMobile ? 70 : 110;
 
-    const innerWidth = width - margin.left - margin.right;
     const innerHeight = data.length * rowHeight;
-    const height = margin.top + innerHeight + margin.bottom;
+    const height = marginTop + innerHeight + marginBottom;
 
     const svg = d3.select("#chart")
       .append("svg")
       .attr("width", width)
       .attr("height", height);
+
+    // Largeur de la colonne de gauche calée sur le nom le plus long
+    // (mesuré), pour que les libellés longs restent toujours entièrement
+    // visibles, y compris en mobile.
+    const labelFontSize = isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop;
+    const maxLabelWidth = measureMaxLabelWidth(svg, data, labelFontSize);
+
+    const margin = {
+      top: marginTop,
+      right: marginRight,
+      bottom: marginBottom,
+      left: 10 + maxLabelWidth + 14   // 10px = décalage de l'ancrage (x=-10), 14px de marge de sécurité avant le bord du SVG
+    };
+
+    const innerWidth = width - margin.left - margin.right;
 
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left}, ${margin.top})`);

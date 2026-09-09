@@ -104,6 +104,10 @@ function measureMaxLabelWidth(svg, data, fontSize) {
 
 // --- Label aligné à gauche, centré verticalement sur sa barre
 // (une seule langue par data_<lang>.csv) ---
+// Tailles reutilisees par highlight() pour l'agrandissement au survol.
+const ROW_LABEL_FONT_SIZE = { mobile: "11px", desktop: "12.5px" };
+const ROW_LABEL_FONT_SIZE_HOVER = { mobile: "13px", desktop: "15px" };
+
 function drawRowLabels(g, data, y, margin, isMobile) {
   g.selectAll("text.label")
     .data(data)
@@ -115,7 +119,7 @@ function drawRowLabels(g, data, y, margin, isMobile) {
     .attr("text-anchor", "start")
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "11px" : "12.5px")
+    .style("font-size", isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop)
     .style("font-weight", "normal")
     .style("fill", "#333")
     .text(d => d.Label);
@@ -186,17 +190,42 @@ function drawAxisTitle(svg, margin, innerWidth, height, isMobile) {
 }
 
 // --- Survol par ligne : met en évidence label + barre + valeur ---
-function highlight(g, label) {
+function highlight(g, label, isMobile, margin) {
   g.selectAll(".bar, .value")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3);
 
-  // Label survolé : noir + gras, sans agrandissement (évite le
-  // chevauchement des lignes voisines).
+  const baseSize = isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop;
+  const hoverSize = isMobile ? ROW_LABEL_FONT_SIZE_HOVER.mobile : ROW_LABEL_FONT_SIZE_HOVER.desktop;
+  let targetSize = hoverSize;
+
+  // Label survolé : au premier plan (raise) pour ne pas être recouvert
+  // par la barre ou les lignes voisines une fois agrandi. La colonne de
+  // gauche est calée au plus juste sur le label le plus long (cf.
+  // measureMaxLabelWidth) : on réduit l'agrandissement si besoin pour
+  // ne jamais déborder sur la barre.
+  if (label !== null) {
+    const sel = g.selectAll(".label").filter(d => d.Label === label);
+    sel.raise();
+
+    // Le poids "bold" (applique juste apres) elargit aussi le texte :
+    // il doit etre pris en compte ici, sinon la mesure sous-estime la
+    // largeur reelle une fois le survol applique.
+    sel.style("font-weight", "bold").style("font-size", hoverSize);
+    const measuredWidth = sel.node().getComputedTextLength();
+    const available = margin.left - 8 - 4; // 4px de marge de sécurité avant la barre
+    if (measuredWidth > available) {
+      const scaledPx = Math.max(parseFloat(baseSize), parseFloat(hoverSize) * (available / measuredWidth));
+      targetSize = scaledPx + "px";
+    }
+    sel.style("font-weight", "normal").style("font-size", baseSize); // repart de la taille de base avant la transition
+  }
+
   g.selectAll(".label")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3)
     .style("font-weight", d => (label !== null && d.Label === label) ? "bold" : "normal")
+    .style("font-size", d => (label !== null && d.Label === label) ? targetSize : baseSize)
     .style("fill", d => (label !== null && d.Label === label) ? "#000" : "#333");
 }
 
@@ -244,7 +273,7 @@ function positionTooltip(tooltipParts, d, mx, my, chartWidth) {
   tooltip.style("opacity", 1);
 }
 
-function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg) {
+function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg, isMobile) {
   g.selectAll("rect.hit")
     .data(data)
     .enter()
@@ -257,7 +286,7 @@ function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg) {
     .attr("fill", "transparent")
     .style("cursor", "pointer")
     .on("mouseover", (event, d) => {
-      highlight(g, d.Label);
+      highlight(g, d.Label, isMobile, margin);
       const [mx, my] = d3.pointer(event, svg.node());
       positionTooltip(tooltipParts, d, mx, my, innerWidth + margin.left + margin.right);
     })
@@ -266,7 +295,7 @@ function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg) {
       positionTooltip(tooltipParts, d, mx, my, innerWidth + margin.left + margin.right);
     })
     .on("mouseout", () => {
-      highlight(g, null);
+      highlight(g, null, isMobile, margin);
       tooltipParts.tooltip.style("opacity", 0);
     });
 }
@@ -330,6 +359,6 @@ function drawChart() {
     drawAxisTitle(svg, margin, innerWidth, height, isMobile);
 
     const tooltipParts = createTooltip(svg);
-    attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg);
+    attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg, isMobile);
   });
 }

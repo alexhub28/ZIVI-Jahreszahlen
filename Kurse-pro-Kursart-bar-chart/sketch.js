@@ -104,6 +104,10 @@ function drawValueLabels(g, data, x, y, total, isMobile) {
     });
 }
 
+// Tailles reutilisees par highlight() pour l'agrandissement au survol.
+const ROW_LABEL_FONT_SIZE = { mobile: "10px", desktop: "12px" };
+const ROW_LABEL_FONT_SIZE_HOVER = { mobile: "12.5px", desktop: "14.5px" };
+
 // --- Labels à gauche (une seule langue par CSV) ---
 function drawRowLabels(g, data, y, isMobile) {
   g.selectAll("text.label")
@@ -116,7 +120,7 @@ function drawRowLabels(g, data, y, isMobile) {
     .attr("text-anchor", "end")
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "10px" : "12px")
+    .style("font-size", isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop)
     .style("font-weight", "normal")
     .style("fill", "#333")
     .text(d => d.label);
@@ -128,7 +132,7 @@ function drawRowLabels(g, data, y, isMobile) {
 
 // --- Survol par ligne : met en évidence label + barre + valeur, révèle
 // la valeur brute entre parenthèses (cachée par défaut). ---
-function highlight(g, label) {
+function highlight(g, label, isMobile, margin) {
   g.selectAll(".bar, .value")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3);
@@ -137,16 +141,40 @@ function highlight(g, label) {
     .transition().duration(150)
     .style("opacity", d => (label !== null && d.label === label) ? 1 : 0);
 
-  // Label survolé : noir plus franc + gras (pas d'agrandissement,
-  // pour ne pas risquer de chevaucher les lignes voisines).
+  const baseSize = isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop;
+  const hoverSize = isMobile ? ROW_LABEL_FONT_SIZE_HOVER.mobile : ROW_LABEL_FONT_SIZE_HOVER.desktop;
+  let targetSize = hoverSize;
+
+  // Label survolé : au premier plan (raise) pour ne pas être recouvert
+  // par les lignes voisines une fois agrandi. Le label grandit vers la
+  // gauche (text-anchor end) : on réduit l'agrandissement si besoin
+  // pour ne jamais déborder du cadre SVG (marge fixe, pas mesurée).
+  if (label !== null) {
+    const sel = g.selectAll(".label").filter(d => d.label === label);
+    sel.raise();
+
+    // Le poids "bold" (applique juste apres) elargit aussi le texte :
+    // il doit etre pris en compte ici, sinon la mesure sous-estime la
+    // largeur reelle une fois le survol applique.
+    sel.style("font-weight", "bold").style("font-size", hoverSize);
+    const measuredWidth = sel.node().getComputedTextLength();
+    const available = margin.left - 10 - 4; // 4px de marge de sécurité avant le bord du SVG
+    if (measuredWidth > available) {
+      const scaledPx = Math.max(parseFloat(baseSize), parseFloat(hoverSize) * (available / measuredWidth));
+      targetSize = scaledPx + "px";
+    }
+    sel.style("font-weight", "normal").style("font-size", baseSize);
+  }
+
   g.selectAll(".label")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3)
     .style("font-weight", d => (label !== null && d.label === label) ? "bold" : "normal")
+    .style("font-size", d => (label !== null && d.label === label) ? targetSize : baseSize)
     .style("fill", d => (label !== null && d.label === label) ? "#000" : "#333");
 }
 
-function attachHoverAreas(g, data, y, margin, innerWidth) {
+function attachHoverAreas(g, data, y, margin, innerWidth, isMobile) {
   g.selectAll("rect.hit")
     .data(data)
     .enter()
@@ -158,8 +186,8 @@ function attachHoverAreas(g, data, y, margin, innerWidth) {
     .attr("height", y.step())
     .attr("fill", "transparent")
     .style("cursor", "pointer")
-    .on("mouseover", (event, d) => highlight(g, d.label))
-    .on("mouseout", () => highlight(g, null));
+    .on("mouseover", (event, d) => highlight(g, d.label, isMobile, margin))
+    .on("mouseout", () => highlight(g, null, isMobile, margin));
 }
 
 // ============================================================
@@ -218,6 +246,6 @@ function drawChart() {
     drawBars(g, data, x, y, barColor);
     drawValueLabels(g, data, x, y, total, isMobile);
     drawRowLabels(g, data, y, isMobile);
-    attachHoverAreas(g, data, y, margin, innerWidth);
+    attachHoverAreas(g, data, y, margin, innerWidth, isMobile);
   });
 }

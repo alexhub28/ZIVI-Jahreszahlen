@@ -78,7 +78,8 @@ function drawLegend(svg, data, colorFor, legendWidth, panelHeight, isMobile) {
     .enter()
     .append("g")
     .attr("class", "legend-row")
-    .attr("transform", (d, i) => `translate(0, ${i * rowHeight})`);
+    .attr("transform", (d, i) => `translate(0, ${i * rowHeight})`)
+    .style("cursor", "pointer");
 
   rows.append("rect")
     .attr("width", 11)
@@ -86,13 +87,48 @@ function drawLegend(svg, data, colorFor, legendWidth, panelHeight, isMobile) {
     .attr("y", 2)
     .attr("fill", colorFor);
 
+  // Agrandi au survol de sa ligne : les noms de genre de cours sont le
+  // texte le plus petit et le plus dense du graphique.
+  const legendFontSize = isMobile ? "10px" : "11.5px";
+  const legendFontSizeHover = isMobile ? "12.5px" : "14px";
+
   rows.append("text")
     .attr("x", 18)
     .attr("y", 11)
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "10px" : "11.5px")
+    .style("font-size", legendFontSize)
     .style("fill", "#111")
     .text(d => d.Label);
+
+  rows
+    .on("mouseover", function () {
+      const textSel = d3.select(this).raise().select("text");
+
+      // Reduit l'agrandissement si besoin pour ne jamais deborder de la
+      // colonne de legende et chevaucher le camembert (le poids "bold"
+      // applique juste apres elargit aussi le texte, il faut le
+      // prendre en compte dans la mesure).
+      textSel.style("font-weight", "bold").style("font-size", legendFontSizeHover);
+      const measuredWidth = textSel.node().getComputedTextLength();
+      const available = legendWidth - 18 - 6; // 6px de marge de securite avant le camembert
+      let targetSize = legendFontSizeHover;
+      if (measuredWidth > available) {
+        const scaledPx = Math.max(parseFloat(legendFontSize), parseFloat(legendFontSizeHover) * (available / measuredWidth));
+        targetSize = scaledPx + "px";
+      }
+      textSel.style("font-weight", "normal").style("font-size", legendFontSize);
+
+      textSel.transition().duration(150)
+        .style("font-size", targetSize)
+        .style("font-weight", "bold");
+    })
+    .on("mouseout", function () {
+      d3.select(this)
+        .select("text")
+        .transition().duration(150)
+        .style("font-size", legendFontSize)
+        .style("font-weight", "normal");
+    });
 }
 
 // ============================================================

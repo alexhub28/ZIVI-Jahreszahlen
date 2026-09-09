@@ -197,13 +197,26 @@ function drawHint(svg, margin, isMobile) {
     .style("fill", BASE_PETROL)
     .text("●");
 
-  hint.append("text")
+  // Agrandi legerement au survol : ce texte reste le plus petit et le
+  // plus dense du graphique (explication du repere sous le titre).
+  const hintFontSize = isMobile ? "10.5px" : "11.5px";
+  const hintFontSizeHover = isMobile ? "12.5px" : "13.5px";
+
+  const hintText = hint.append("text")
     .attr("x", 12)
     .attr("y", 10)
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "10.5px" : "11.5px")
+    .style("font-size", hintFontSize)
     .style("fill", "#555")
     .text(HINT_LOOKUP[currentLang]);
+
+  hintText
+    .on("mouseover", function () {
+      d3.select(this).transition().duration(150).style("font-size", hintFontSizeHover);
+    })
+    .on("mouseout", function () {
+      d3.select(this).transition().duration(150).style("font-size", hintFontSize);
+    });
 }
 
 function drawBars(g, data, scales, layout) {

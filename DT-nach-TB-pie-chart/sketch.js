@@ -303,16 +303,20 @@ function fillTooltipText(tooltipText, d) {
   tooltipText.selectAll("tspan").remove();
   tooltipText.attr("x", 0).attr("y", 0);
 
+  // Nom du domaine mis en avant (police plus grande que le reste de
+  // l'infobulle) : c'est l'information la plus utile au survol.
   tooltipText.append("tspan")
     .attr("x", TOOLTIP_PAD_X)
     .attr("dy", 0)
     .style("font-weight", "normal")
+    .style("font-size", "14.5px")
     .text(d.data.Label);
 
   tooltipText.append("tspan")
     .attr("x", TOOLTIP_PAD_X)
-    .attr("dy", "1.35em")
+    .attr("dy", "1.4em")
     .style("font-weight", "normal")
+    .style("font-size", "12.5px")
     .style("fill", "#555")
     .text(formatSwiss(d.data.Value));
 }

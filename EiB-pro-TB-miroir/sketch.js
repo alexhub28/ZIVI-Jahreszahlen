@@ -247,6 +247,9 @@ function drawSideAxis(g, scale, panelWidth, innerHeight, isMobile) {
 // Colonne centrale (noms de domaine)
 // ============================================================
 
+// Tailles reutilisees par highlight() pour l'agrandissement au survol.
+const CENTER_LABEL_FONT_SIZE_HOVER = { mobile: "11.5px", desktop: "12.5px" };
+
 function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg) {
   const fontSize = isMobile ? "9.5px" : "10.5px";
   const maxTextWidth = centerLabelWidth - 16;
@@ -288,19 +291,46 @@ function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg) {
 // groupe (gauche / centre / droite) survolé.
 // ============================================================
 
-function highlight(svg, label) {
+function highlight(svg, label, isMobile, centerLabelWidth) {
   svg.selectAll(".bar, .value")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3);
+
+  const baseSize = isMobile ? "9.5px" : "10.5px";
+  const hoverSize = isMobile ? CENTER_LABEL_FONT_SIZE_HOVER.mobile : CENTER_LABEL_FONT_SIZE_HOVER.desktop;
+  let targetSize = hoverSize;
+
+  // Label survolé : au premier plan (raise) pour ne pas être recouvert
+  // par les lignes voisines une fois agrandi. Le label grandit de façon
+  // symétrique (text-anchor middle) : on réduit l'agrandissement si
+  // besoin pour ne jamais déborder sur les panneaux de barres voisins.
+  if (label !== null) {
+    const sel = svg.selectAll(".domain-label").filter(d => d.label === label);
+    sel.raise();
+
+    // Le poids "bold" (applique juste apres) elargit aussi le texte :
+    // il doit etre pris en compte ici, sinon la mesure sous-estime la
+    // largeur reelle une fois le survol applique.
+    sel.style("font-weight", "bold").style("font-size", hoverSize);
+    const lineWidths = sel.selectAll("tspan").nodes().map(n => n.getComputedTextLength());
+    const measuredWidth = Math.max(...lineWidths);
+    const available = centerLabelWidth - 8; // 4px de marge de sécurité de chaque côté
+    if (measuredWidth > available) {
+      const scaledPx = Math.max(parseFloat(baseSize), parseFloat(hoverSize) * (available / measuredWidth));
+      targetSize = scaledPx + "px";
+    }
+    sel.style("font-weight", "normal").style("font-size", baseSize);
+  }
 
   svg.selectAll(".domain-label")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3)
     .style("font-weight", d => (label !== null && d.label === label) ? "bold" : "normal")
+    .style("font-size", d => (label !== null && d.label === label) ? targetSize : baseSize)
     .style("fill", d => (label !== null && d.label === label) ? "#000" : "#333");
 }
 
-function attachHover(svg, data, y0, hitOffsetX, hitWidth, hitOffsetY) {
+function attachHover(svg, data, y0, hitOffsetX, hitWidth, hitOffsetY, isMobile, centerLabelWidth) {
   svg.selectAll("rect.hit")
     .data(data)
     .enter()
@@ -312,8 +342,8 @@ function attachHover(svg, data, y0, hitOffsetX, hitWidth, hitOffsetY) {
     .attr("height", y0.step())
     .attr("fill", "transparent")
     .style("cursor", "pointer")
-    .on("mouseover", (event, d) => highlight(svg, d.label))
-    .on("mouseout", () => highlight(svg, null));
+    .on("mouseover", (event, d) => highlight(svg, d.label, isMobile, centerLabelWidth))
+    .on("mouseout", () => highlight(svg, null, isMobile, centerLabelWidth));
 }
 
 // ============================================================
@@ -407,6 +437,6 @@ function drawChart() {
     drawSideAxis(gRight, rightScale, panelWidth, innerHeight, isMobile);
     drawCenterLabels(gCenter, data, y0, centerLabelWidth, isMobile, svg);
 
-    attachHover(svg, data, y0, leftX, panelWidth * 2 + centerLabelWidth, margin.top);
+    attachHover(svg, data, y0, leftX, panelWidth * 2 + centerLabelWidth, margin.top, isMobile, centerLabelWidth);
   });
 }

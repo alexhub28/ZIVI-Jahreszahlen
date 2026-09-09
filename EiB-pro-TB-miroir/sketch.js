@@ -201,7 +201,7 @@ function drawSideBars(g, data, y0, lengthScale, panelWidth, color, key, side, is
     .attr("text-anchor", side === "left" ? "end" : "start")
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "9.5px" : "10.5px")
+    .style("font-size", isMobile ? VALUE_FONT_SIZE.mobile : VALUE_FONT_SIZE.desktop)
     .style("font-weight", "normal")
     .style("fill", "#111")
     .text("0")
@@ -250,6 +250,11 @@ function drawSideAxis(g, scale, panelWidth, innerHeight, isMobile) {
 // Tailles reutilisees par highlight() pour l'agrandissement au survol.
 const CENTER_LABEL_FONT_SIZE_HOVER = { mobile: "11.5px", desktop: "12.5px" };
 
+// Memes tailles que le label central, pour que les valeurs grandissent
+// avec lui (evite deux polices differentes sur la meme ligne au survol).
+const VALUE_FONT_SIZE = { mobile: "9.5px", desktop: "10.5px" };
+const VALUE_FONT_SIZE_HOVER = { mobile: "11.5px", desktop: "12.5px" };
+
 function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg) {
   const fontSize = isMobile ? "9.5px" : "10.5px";
   const maxTextWidth = centerLabelWidth - 16;
@@ -291,14 +296,18 @@ function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg) {
 // groupe (gauche / centre / droite) survolé.
 // ============================================================
 
-function highlight(svg, label, isMobile, centerLabelWidth) {
-  svg.selectAll(".bar, .value")
+function highlight(svg, label, isMobile, centerLabelWidth, containerWidth) {
+  svg.selectAll(".bar")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3);
 
   const baseSize = isMobile ? "9.5px" : "10.5px";
   const hoverSize = isMobile ? CENTER_LABEL_FONT_SIZE_HOVER.mobile : CENTER_LABEL_FONT_SIZE_HOVER.desktop;
   let targetSize = hoverSize;
+
+  const valueBaseSize = isMobile ? VALUE_FONT_SIZE.mobile : VALUE_FONT_SIZE.desktop;
+  const valueHoverSize = isMobile ? VALUE_FONT_SIZE_HOVER.mobile : VALUE_FONT_SIZE_HOVER.desktop;
+  const valueTargetByNode = new Map();
 
   // Label survolé : au premier plan (raise) pour ne pas être recouvert
   // par les lignes voisines une fois agrandi. Le label grandit de façon
@@ -320,6 +329,39 @@ function highlight(svg, label, isMobile, centerLabelWidth) {
       targetSize = scaledPx + "px";
     }
     sel.style("font-weight", "normal").style("font-size", baseSize);
+
+    // Les valeurs des deux panneaux (Einsatzbetriebe + Einsatzplätze)
+    // grandissent avec le label central, pour ne pas garder deux tailles
+    // de police différentes sur la même ligne au survol. Chacune grandit
+    // vers l'extérieur (bord du SVG) à partir de sa propre position
+    // réelle (le plafond dépend de la longueur de SA barre, pas d'une
+    // marge fixe qui pénaliserait à tort une valeur courte dont la barre
+    // est loin du bord).
+    const valSel = svg.selectAll(".value").filter(d => d.label === label);
+    valSel.raise();
+    valSel.style("font-size", valueHoverSize);
+    valSel.each(function () {
+      // Position absolue reelle (translation du panneau parent + x local),
+      // comparee au bord reel du SVG plutot qu'a la marge nominale
+      // (outerValueMargin) : sur un ecran etroit avec un nom de domaine
+      // long, panelWidth est plafonne a son minimum (70px, cf. Math.max
+      // dans drawChart) et la mise en page peut alors deborder legerement
+      // du budget nominal - la marge reellement libre est plus etroite
+      // que prevu par le calcul theorique.
+      const parentX = this.parentNode.transform.baseVal.consolidate().matrix.e;
+      const currentX = parseFloat(this.getAttribute("x"));
+      const absoluteX = parentX + currentX;
+      const measuredWidth = this.getComputedTextLength();
+      const isLeftSide = this.getAttribute("text-anchor") === "end";
+      const available = (isLeftSide ? absoluteX : (containerWidth - absoluteX)) - 4;
+      let t = valueHoverSize;
+      if (measuredWidth > available) {
+        const scaledPx = Math.max(parseFloat(valueBaseSize), parseFloat(valueHoverSize) * (available / measuredWidth));
+        t = scaledPx + "px";
+      }
+      valueTargetByNode.set(this, t);
+    });
+    valSel.style("font-size", valueBaseSize);
   }
 
   svg.selectAll(".domain-label")
@@ -328,9 +370,19 @@ function highlight(svg, label, isMobile, centerLabelWidth) {
     .style("font-weight", d => (label !== null && d.label === label) ? "bold" : "normal")
     .style("font-size", d => (label !== null && d.label === label) ? targetSize : baseSize)
     .style("fill", d => (label !== null && d.label === label) ? "#000" : "#333");
+
+  svg.selectAll(".value")
+    .transition().duration(150)
+    .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3)
+    .style("font-size", function (d) {
+      if (label !== null && d.label === label) {
+        return valueTargetByNode.get(this) || valueHoverSize;
+      }
+      return valueBaseSize;
+    });
 }
 
-function attachHover(svg, data, y0, hitOffsetX, hitWidth, hitOffsetY, isMobile, centerLabelWidth) {
+function attachHover(svg, data, y0, hitOffsetX, hitWidth, hitOffsetY, isMobile, centerLabelWidth, containerWidth) {
   svg.selectAll("rect.hit")
     .data(data)
     .enter()
@@ -342,8 +394,8 @@ function attachHover(svg, data, y0, hitOffsetX, hitWidth, hitOffsetY, isMobile, 
     .attr("height", y0.step())
     .attr("fill", "transparent")
     .style("cursor", "pointer")
-    .on("mouseover", (event, d) => highlight(svg, d.label, isMobile, centerLabelWidth))
-    .on("mouseout", () => highlight(svg, null, isMobile, centerLabelWidth));
+    .on("mouseover", (event, d) => highlight(svg, d.label, isMobile, centerLabelWidth, containerWidth))
+    .on("mouseout", () => highlight(svg, null, isMobile, centerLabelWidth, containerWidth));
 }
 
 // ============================================================
@@ -437,6 +489,6 @@ function drawChart() {
     drawSideAxis(gRight, rightScale, panelWidth, innerHeight, isMobile);
     drawCenterLabels(gCenter, data, y0, centerLabelWidth, isMobile, svg);
 
-    attachHover(svg, data, y0, leftX, panelWidth * 2 + centerLabelWidth, margin.top, isMobile, centerLabelWidth);
+    attachHover(svg, data, y0, leftX, panelWidth * 2 + centerLabelWidth, margin.top, isMobile, centerLabelWidth, containerWidth);
   });
 }

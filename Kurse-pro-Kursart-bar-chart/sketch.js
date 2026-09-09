@@ -69,6 +69,12 @@ function drawBars(g, data, x, y, barColor) {
     .attr("width", d => x(d.value));
 }
 
+// Tailles reutilisees par highlight() pour l'agrandissement au survol
+// (memes tailles que le label de la ligne, pour ne pas se retrouver avec
+// deux polices differentes au survol d'une meme ligne).
+const VALUE_FONT_SIZE = { mobile: "10px", desktop: "12px" };
+const VALUE_FONT_SIZE_HOVER = { mobile: "12.5px", desktop: "14.5px" };
+
 // --- Étiquette "%" au bout de chaque barre, compteur animé ; la valeur
 // brute s'affiche entre parenthèses uniquement au survol de la ligne. ---
 function drawValueLabels(g, data, x, y, total, isMobile) {
@@ -81,9 +87,10 @@ function drawValueLabels(g, data, x, y, total, isMobile) {
     .attr("y", d => y(d.label) + y.bandwidth() / 2)
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "10px" : "12px")
+    .style("font-size", isMobile ? VALUE_FONT_SIZE.mobile : VALUE_FONT_SIZE.desktop)
     .style("font-weight", "normal")
-    .style("fill", "#111");
+    .style("fill", "#111")
+    .style("pointer-events", "none"); // le survol reste porté par rect.hit ; sans ça, la valeur agrandie+raise() passe devant le rect au survol et déclenche un mouseout immédiat
 
   valueLabels.append("tspan").attr("class", "pct-value").text("0 %");
   valueLabels.append("tspan")
@@ -147,6 +154,7 @@ function drawRowLabels(g, data, y, isMobile) {
     .style("font-size", isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop)
     .style("font-weight", "normal")
     .style("fill", "#333")
+    .style("pointer-events", "none") // meme raison que pour la valeur : le survol reste porté par rect.hit
     .text(d => d.label);
 }
 
@@ -156,8 +164,8 @@ function drawRowLabels(g, data, y, isMobile) {
 
 // --- Survol par ligne : met en évidence label + barre + valeur, révèle
 // la valeur brute entre parenthèses (cachée par défaut). ---
-function highlight(g, label, isMobile, margin) {
-  g.selectAll(".bar, .value")
+function highlight(g, label, isMobile, margin, innerWidth) {
+  g.selectAll(".bar")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3);
 
@@ -168,6 +176,10 @@ function highlight(g, label, isMobile, margin) {
   const baseSize = isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop;
   const hoverSize = isMobile ? ROW_LABEL_FONT_SIZE_HOVER.mobile : ROW_LABEL_FONT_SIZE_HOVER.desktop;
   let targetSize = hoverSize;
+
+  const valueBaseSize = isMobile ? VALUE_FONT_SIZE.mobile : VALUE_FONT_SIZE.desktop;
+  const valueHoverSize = isMobile ? VALUE_FONT_SIZE_HOVER.mobile : VALUE_FONT_SIZE_HOVER.desktop;
+  let valueTargetSize = valueHoverSize;
 
   // Label survolé : au premier plan (raise) pour ne pas être recouvert
   // par les lignes voisines une fois agrandi. Le label grandit vers la
@@ -188,6 +200,28 @@ function highlight(g, label, isMobile, margin) {
       targetSize = scaledPx + "px";
     }
     sel.style("font-weight", "normal").style("font-size", baseSize);
+
+    // La valeur (pourcentage, + le chiffre brut entre parenthèses qui se
+    // révèle en même temps) grandit avec le label, pour ne pas garder
+    // deux tailles de police différentes sur la même ligne au survol.
+    // Mesurée avec le tspan entre parenthèses déjà révélé (il apparaît
+    // exactement au moment du survol), sinon la mesure sous-estimerait
+    // la largeur réelle une fois les deux effets combinés. La place
+    // disponible dépend de la position réelle de cette valeur (une barre
+    // courte laisse beaucoup plus de place qu'une barre proche du bord),
+    // pas d'une marge fixe qui plafonnerait à tort les petites valeurs.
+    const valSel = g.selectAll(".value").filter(d => d.label === label);
+    valSel.raise();
+    const valNode = valSel.node();
+    const valueCurrentX = parseFloat(valNode.getAttribute("x"));
+    valSel.style("font-size", valueHoverSize);
+    const valueMeasuredWidth = valNode.getComputedTextLength();
+    const valueAvailable = (innerWidth - valueCurrentX) + margin.right - 4;
+    if (valueMeasuredWidth > valueAvailable) {
+      const valueScaledPx = Math.max(parseFloat(valueBaseSize), parseFloat(valueHoverSize) * (valueAvailable / valueMeasuredWidth));
+      valueTargetSize = valueScaledPx + "px";
+    }
+    valSel.style("font-size", valueBaseSize);
   }
 
   g.selectAll(".label")
@@ -196,6 +230,11 @@ function highlight(g, label, isMobile, margin) {
     .style("font-weight", d => (label !== null && d.label === label) ? "bold" : "normal")
     .style("font-size", d => (label !== null && d.label === label) ? targetSize : baseSize)
     .style("fill", d => (label !== null && d.label === label) ? "#000" : "#333");
+
+  g.selectAll(".value")
+    .transition().duration(150)
+    .style("opacity", d => (label === null || d.label === label) ? 1 : 0.3)
+    .style("font-size", d => (label !== null && d.label === label) ? valueTargetSize : valueBaseSize);
 }
 
 function attachHoverAreas(g, data, y, margin, innerWidth, isMobile) {
@@ -210,8 +249,8 @@ function attachHoverAreas(g, data, y, margin, innerWidth, isMobile) {
     .attr("height", y.step())
     .attr("fill", "transparent")
     .style("cursor", "pointer")
-    .on("mouseover", (event, d) => highlight(g, d.label, isMobile, margin))
-    .on("mouseout", () => highlight(g, null, isMobile, margin));
+    .on("mouseover", (event, d) => highlight(g, d.label, isMobile, margin, innerWidth))
+    .on("mouseout", () => highlight(g, null, isMobile, margin, innerWidth));
 }
 
 // ============================================================

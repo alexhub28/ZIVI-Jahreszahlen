@@ -122,8 +122,15 @@ function drawRowLabels(g, data, y, margin, isMobile) {
     .style("font-size", isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop)
     .style("font-weight", "normal")
     .style("fill", "#333")
+    .style("pointer-events", "none") // le survol reste porté par rect.hit ; sans ça, le label agrandi+raise() passe devant le rect au survol et déclenche un mouseout immédiat (le survol "s'annule" dès qu'on touche le texte)
     .text(d => d.Label);
 }
+
+// Tailles reutilisees par highlight() pour l'agrandissement au survol
+// (memes tailles que le label de la ligne, pour ne pas se retrouver avec
+// deux polices differentes au survol d'une meme ligne).
+const VALUE_FONT_SIZE = { mobile: "9.5px", desktop: "10.5px" };
+const VALUE_FONT_SIZE_HOVER = { mobile: "11px", desktop: "12.5px" };
 
 // --- "%" animé au bout de chaque barre ; la valeur absolue n'apparaît
 // qu'au survol (tooltip), pour ne pas surcharger le graphique ---
@@ -137,9 +144,10 @@ function drawValueLabels(g, data, x, y, isMobile) {
     .attr("y", d => y(d.Label) + y.bandwidth() / 2)
     .attr("dominant-baseline", "middle")
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "9.5px" : "10.5px")
+    .style("font-size", isMobile ? VALUE_FONT_SIZE.mobile : VALUE_FONT_SIZE.desktop)
     .style("font-weight", "normal")
     .style("fill", "#111")
+    .style("pointer-events", "none") // meme raison que le label : evite qu'un raise() au survol ne coupe le survol porte par rect.hit
     .text(formatPercent(0));
 
   valueLabels.transition()
@@ -190,14 +198,18 @@ function drawAxisTitle(svg, margin, innerWidth, height, isMobile) {
 }
 
 // --- Survol par ligne : met en évidence label + barre + valeur ---
-function highlight(g, label, isMobile, margin) {
-  g.selectAll(".bar, .value")
+function highlight(g, label, isMobile, margin, innerWidth) {
+  g.selectAll(".bar")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3);
 
   const baseSize = isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop;
   const hoverSize = isMobile ? ROW_LABEL_FONT_SIZE_HOVER.mobile : ROW_LABEL_FONT_SIZE_HOVER.desktop;
   let targetSize = hoverSize;
+
+  const valueBaseSize = isMobile ? VALUE_FONT_SIZE.mobile : VALUE_FONT_SIZE.desktop;
+  const valueHoverSize = isMobile ? VALUE_FONT_SIZE_HOVER.mobile : VALUE_FONT_SIZE_HOVER.desktop;
+  let valueTargetSize = valueHoverSize;
 
   // Label survolé : au premier plan (raise) pour ne pas être recouvert
   // par la barre ou les lignes voisines une fois agrandi. La colonne de
@@ -219,6 +231,27 @@ function highlight(g, label, isMobile, margin) {
       targetSize = scaledPx + "px";
     }
     sel.style("font-weight", "normal").style("font-size", baseSize); // repart de la taille de base avant la transition
+
+    // La valeur ("%") grandit avec le label, pour ne pas garder deux
+    // tailles de police différentes sur la même ligne au survol. Elle
+    // grandit vers la droite (au-delà du bout de la barre) : la place
+    // disponible dépend de la position réelle de CETTE valeur (une barre
+    // courte laisse beaucoup plus de place qu'une barre proche du bord),
+    // pas d'une marge fixe qui plafonnerait à tort les petites valeurs.
+    const valSel = g.selectAll(".value").filter(d => d.Label === label);
+    valSel.raise();
+    // Pas de gras ici (contrairement au label) : seule la taille doit
+    // suivre, le reste du style de la valeur reste inchangé.
+    const valNode = valSel.node();
+    const valueCurrentX = parseFloat(valNode.getAttribute("x"));
+    valSel.style("font-size", valueHoverSize);
+    const valueMeasuredWidth = valNode.getComputedTextLength();
+    const valueAvailable = (innerWidth - valueCurrentX) + margin.right - 4;
+    if (valueMeasuredWidth > valueAvailable) {
+      const valueScaledPx = Math.max(parseFloat(valueBaseSize), parseFloat(valueHoverSize) * (valueAvailable / valueMeasuredWidth));
+      valueTargetSize = valueScaledPx + "px";
+    }
+    valSel.style("font-size", valueBaseSize);
   }
 
   g.selectAll(".label")
@@ -227,6 +260,11 @@ function highlight(g, label, isMobile, margin) {
     .style("font-weight", d => (label !== null && d.Label === label) ? "bold" : "normal")
     .style("font-size", d => (label !== null && d.Label === label) ? targetSize : baseSize)
     .style("fill", d => (label !== null && d.Label === label) ? "#000" : "#333");
+
+  g.selectAll(".value")
+    .transition().duration(150)
+    .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3)
+    .style("font-size", d => (label !== null && d.Label === label) ? valueTargetSize : valueBaseSize);
 }
 
 const TOOLTIP_PAD_X = 8;
@@ -286,7 +324,7 @@ function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg, isM
     .attr("fill", "transparent")
     .style("cursor", "pointer")
     .on("mouseover", (event, d) => {
-      highlight(g, d.Label, isMobile, margin);
+      highlight(g, d.Label, isMobile, margin, innerWidth);
       const [mx, my] = d3.pointer(event, svg.node());
       positionTooltip(tooltipParts, d, mx, my, innerWidth + margin.left + margin.right);
     })
@@ -295,7 +333,7 @@ function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg, isM
       positionTooltip(tooltipParts, d, mx, my, innerWidth + margin.left + margin.right);
     })
     .on("mouseout", () => {
-      highlight(g, null, isMobile, margin);
+      highlight(g, null, isMobile, margin, innerWidth);
       tooltipParts.tooltip.style("opacity", 0);
     });
 }

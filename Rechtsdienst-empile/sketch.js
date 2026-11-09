@@ -65,7 +65,8 @@ const SOLO_SERIES = [
 ];
 
 // Ordre d'affichage de la legende.
-const LEGEND_ORDER = ["Strafanzeigen", "Art73_74", "Art76", "Strafbefehle"];
+// Même ordre que les colonnes : colonne empilée (Art. 73/74, Art. 76), puis Strafanzeigen, Strafbefehle.
+const LEGEND_ORDER = ["Art73_74", "Art76", "Strafanzeigen", "Strafbefehle"];
 const ALL_SERIES = [...STACK_SERIES, ...SOLO_SERIES];
 const SERIES_BY_KEY = Object.fromEntries(ALL_SERIES.map(s => [s.key, s]));
 

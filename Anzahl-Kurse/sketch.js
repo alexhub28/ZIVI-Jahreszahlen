@@ -161,6 +161,14 @@ function drawValueLabels(g, data, scales, layout, isMobile) {
 }
 
 function drawYearLabels(g, data, x, layout, isMobile) {
+  // Taille réduite si les années se touchent (écran étroit) : la plus
+  // large doit tenir dans un pas de barre, avec 4px d'écart.
+  const baseSize = isMobile ? 11.5 : 13.5;
+  const probe = g.append("text").style("font-family", "Arial").style("font-size", baseSize + "px").text("2000");
+  const yearWidth = probe.node().getComputedTextLength();
+  probe.remove();
+  const fontSize = Math.min(baseSize, baseSize * (x.step() - 4) / yearWidth);
+
   g.selectAll("text.label")
     .data(data)
     .enter()
@@ -170,7 +178,7 @@ function drawYearLabels(g, data, x, layout, isMobile) {
     .attr("y", layout.innerHeight + 22)
     .attr("text-anchor", "middle")
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "11.5px" : "13.5px")
+    .style("font-size", fontSize + "px")
     .style("fill", "#111")
     .text(d => d.year);
 }

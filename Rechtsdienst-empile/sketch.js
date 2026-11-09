@@ -54,7 +54,7 @@ const SOLO_SERIES = [
   {
     key: "Strafbefehle",
     internKey: "Strafbefehle_Intern",
-    color: "#CAE7EA", // mint
+    color: "#FCEB30", // jaune (Limonengelb) - anciennement mint, peu lisible à côté du petrol 50 %
     opacity: 1,
     labelLookup: {
       de: "Strafbefehle wegen Zivildienstverweigerung",
@@ -65,7 +65,7 @@ const SOLO_SERIES = [
 ];
 
 // Ordre d'affichage de la legende.
-const LEGEND_ORDER = ["Strafanzeigen", "Art73_74", "Strafbefehle", "Art76"];
+const LEGEND_ORDER = ["Strafanzeigen", "Art73_74", "Art76", "Strafbefehle"];
 const ALL_SERIES = [...STACK_SERIES, ...SOLO_SERIES];
 const SERIES_BY_KEY = Object.fromEntries(ALL_SERIES.map(s => [s.key, s]));
 

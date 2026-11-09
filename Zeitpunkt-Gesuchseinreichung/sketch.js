@@ -187,11 +187,16 @@ function drawChart() {
     svgProbe.remove();
 
     const legendHeight = 52;
+    const marginRight = isMobile ? 90 : 140;
+    // Écran étroit : si la colonne de labels laisserait moins de 200px aux
+    // bulles, chaque catégorie passe au-dessus de sa ligne de bulles.
+    const normalLeft = 10 + maxLabelWidth + (isMobile ? 20 : 30);
+    const stacked = width - normalLeft - marginRight < 200;
     const margin = {
       top: legendHeight + 10,
-      right: isMobile ? 90 : 140,
+      right: marginRight,
       bottom: 12,
-      left: 10 + maxLabelWidth + (isMobile ? 20 : 30)
+      left: stacked ? 10 : normalLeft
     };
 
     const innerWidth = width - margin.left - margin.right;
@@ -298,7 +303,8 @@ function drawChart() {
       .style("fill", "#999");
 
     data.forEach((d, i) => {
-      const rowY = y(d.key) + y.bandwidth() / 2;
+      // stacked : bulles un peu plus bas, pour laisser la place au label au-dessus.
+      const rowY = y(d.key) + y.bandwidth() / 2 + (stacked ? 10 : 0);
       const x24 = x(d.y2024.value);
       const x25 = x(d.y2025.value);
 
@@ -446,7 +452,7 @@ function drawChart() {
 
       // --- Étiquette de valeur du lila (2025) : à DROITE de sa bulle.
       // Masquée par défaut, révélée au survol comme le petrol ci-dessus. ---
-      row.append("text")
+      const lilaLabel = row.append("text")
         .attr("class", "count-label")
         .attr("x", x25 + r25 + LILA_LABEL_GAP)
         .attr("y", cy25 - 40)
@@ -463,15 +469,35 @@ function drawChart() {
       g.append("text")
         .attr("class", "row-label")
         .datum(d)
-        .attr("x", -10)
-        .attr("y", rowY)
-        .attr("text-anchor", "end")
-        .attr("dominant-baseline", "middle")
+        .attr("x", stacked ? -margin.left + 10 : -10)
+        .attr("y", stacked ? y(d.key) + 12 : rowY)
+        .attr("text-anchor", stacked ? "start" : "end")
+        .attr("dominant-baseline", stacked ? "auto" : "middle")
         .style("font-family", "Arial")
         .style("font-size", isMobile ? "11.5px" : "13.5px")
         .style("font-weight", "normal")
         .style("fill", "#333")
         .text(labelLookup[currentLang][d.key]);
+
+      // stacked : les chiffres absolus (survol) se placent sur la ligne du
+      // label, juste après lui, dans la couleur de leur année — au-dessus de
+      // la bulle, ils chevauchaient le label.
+      if (stacked) {
+        const rowLabel = g.selectAll(".row-label").filter(dd => dd === d);
+        // + 12 % : le label passe en gras au survol, donc un peu plus large.
+        const afterLabel = -margin.left + 10 + rowLabel.node().getComputedTextLength() * 1.12 + 8;
+        const labelBaseline = y(d.key) + 12;
+        petrolLabel
+          .attr("x", afterLabel)
+          .attr("y", labelBaseline)
+          .attr("text-anchor", "start")
+          .style("fill", COLOR_2024);
+        lilaLabel
+          .attr("x", afterLabel + petrolLabel.node().getComputedTextLength() + 8)
+          .attr("y", labelBaseline)
+          .attr("dominant-baseline", "auto")
+          .style("fill", "#7C81B0"); // lila assombri, lisible sur fond blanc
+      }
     });
 
     // --- Survol par ligne : met en évidence une catégorie ---

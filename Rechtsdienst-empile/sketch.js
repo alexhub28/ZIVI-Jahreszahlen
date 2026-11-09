@@ -149,7 +149,7 @@ function computeLayout(containerWidth, isMobile) {
   };
 
   const innerWidth = containerWidth - margin.left - margin.right;
-  const innerHeight = isMobile ? 240 : 280;
+  const innerHeight = isMobile ? 220 : 264; // tient sous 500px (cadre LivingDocs) aux deux largeurs
   const width = containerWidth;
   const height = margin.top + innerHeight + margin.bottom;
 
@@ -315,15 +315,18 @@ function drawLegend() {
 // Colonnes (groupées par année, la première empilée)
 // ============================================================
 
-function drawColumns(g, data, scales, layout, isMobile) {
+// compact = les valeurs de deux colonnes voisines se toucheraient (écran
+// étroit) : seul le total de la colonne empilée reste affiché, le détail
+// passe dans l'infobulle au survol.
+function drawColumns(g, data, scales, layout, isMobile, compact) {
   const { x0, x1, y, stackedSeries } = scales;
 
   drawComboSegments(g, data, scales, layout);
 
-  SOLO_SERIES.forEach(s => drawSoloBars(g, data, scales, layout, isMobile, s));
+  SOLO_SERIES.forEach(s => drawSoloBars(g, data, scales, layout, isMobile, s, compact));
 
   data.forEach((d, i) => {
-    drawComboSegmentLabels(g, d, i, scales, isMobile);
+    if (!compact) drawComboSegmentLabels(g, d, i, scales, isMobile);
     drawComboTotalLabel(g, d, i, scales, layout, isMobile);
     drawYearLabel(g, d, x0, layout, isMobile);
   });
@@ -358,7 +361,7 @@ function drawComboSegments(g, data, scales, layout) {
 }
 
 // --- Colonnes simples (Strafanzeigen, Strafbefehle) ---
-function drawSoloBars(g, data, scales, layout, isMobile, s) {
+function drawSoloBars(g, data, scales, layout, isMobile, s, compact) {
   const { x0, x1, y } = scales;
   const groupX = x1(s.key);
 
@@ -380,8 +383,9 @@ function drawSoloBars(g, data, scales, layout, isMobile, s) {
     .attr("y", d => y(d[s.key]))
     .attr("height", d => layout.innerHeight - y(d[s.key]));
 
-  // Valeur + valeur interne entre parentheses, toujours visibles
-  // au-dessus de la barre.
+  // Valeur + valeur interne entre parentheses au-dessus de la barre
+  // (dans l'infobulle en mode compact).
+  if (compact) return;
   data.forEach((d, i) => {
     const cx = x0(d.year) + groupX + x1.bandwidth() / 2;
     const delay = i * 90 + SEGMENT_DURATION + 100;
@@ -543,8 +547,9 @@ function drawYearLabel(g, d, x0, layout, isMobile) {
 
 // Zone de survol par annee : isole l'annee et affiche la pastille
 // sur la ligne des jours de service.
-function attachHoverArea(g, data, scales, layout) {
+function attachHoverArea(g, data, scales, layout, compact) {
   const { x0, yRight } = scales;
+  const tooltip = compact ? createTooltip() : null;
 
   const hoverDot = g.append("circle")
     .attr("class", "hover-dot")
@@ -565,9 +570,67 @@ function attachHoverArea(g, data, scales, layout) {
       .attr("height", layout.innerHeight + layout.margin.bottom)
       .attr("fill", "transparent")
       .style("cursor", "pointer")
-      .on("mouseover", () => highlightColumn(g, d.year, hoverDot, data, scales))
-      .on("mouseout", () => highlightColumn(g, null, hoverDot, data, scales));
+      .on("mouseover", () => {
+        highlightColumn(g, d.year, hoverDot, data, scales);
+        if (tooltip) showTooltip(tooltip, d, x0(d.year) + x0.bandwidth() / 2 + layout.margin.left);
+      })
+      .on("mouseout", () => {
+        highlightColumn(g, null, hoverDot, data, scales);
+        if (tooltip) tooltip.style("opacity", 0);
+      });
   });
+}
+
+// --- Infobulle du mode compact : valeurs (+ internes) de chaque série et jours de service ---
+function createTooltip() {
+  return d3.select("#chart").append("div")
+    .attr("class", "rd-tooltip")
+    .style("position", "absolute")
+    .style("top", "0px")
+    .style("pointer-events", "none")
+    .style("opacity", 0)
+    .style("background", "#fff")
+    .style("border", "1px solid #ddd")
+    .style("border-radius", "4px")
+    .style("box-shadow", "0 2px 6px rgba(0,0,0,0.12)")
+    .style("padding", "6px 8px")
+    .style("font-family", "Arial")
+    .style("font-size", "11px")
+    .style("line-height", "1.45")
+    .style("color", "#111")
+    .style("white-space", "nowrap");
+}
+
+function showTooltip(tooltip, d, centerX) {
+  const swatch = s => `<span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;background:${s.color};opacity:${s.opacity}"></span>`;
+  const rows = [...STACK_SERIES, ...SOLO_SERIES].map(s =>
+    `<div>${swatch(s)}${formatSwiss(d[s.key])} <span style="color:#888">(${formatSwiss(d[s.internKey])})</span></div>`
+  ).join("");
+  const line = `<div><span style="display:inline-block;width:10px;border-top:2px solid ${LINE_COLOR};margin-right:4px;vertical-align:middle"></span>${(d.diensttage / 1e6).toFixed(2)}</div>`;
+  tooltip.html(`<div style="font-weight:bold;margin-bottom:2px">${d.year}</div>${rows}${line}`)
+    .style("opacity", 1);
+
+  // À droite de l'année survolée, ou à gauche si elle déborderait.
+  const chartW = document.getElementById("chart").clientWidth;
+  const tipW = tooltip.node().offsetWidth;
+  let left = centerX + 14;
+  if (left + tipW > chartW) left = centerX - 14 - tipW;
+  tooltip.style("left", `${Math.max(0, left)}px`);
+}
+
+// --- Largeur du plus grand nombre affiché au-dessus des colonnes ---
+function measureMaxValueWidth(svg, data, fontSize) {
+  const probe = svg.append("text")
+    .style("font-family", "Arial")
+    .style("font-size", fontSize)
+    .style("visibility", "hidden");
+  let maxW = 0;
+  data.forEach(d => ["comboTotal", ...SOLO_SERIES.map(s => s.key)].forEach(k => {
+    probe.text(formatSwiss(d[k]));
+    maxW = Math.max(maxW, probe.node().getComputedTextLength());
+  }));
+  probe.remove();
+  return maxW;
 }
 
 function highlightColumn(g, year, hoverDot, data, scales) {
@@ -660,8 +723,9 @@ function drawChart() {
     // Ligne avant barres (ordre voulu, comme le graphique groupe)
     // pour que les colonnes restent au premier plan.
     drawServiceLine(g, data, scales);
-    drawColumns(g, data, scales, layout, isMobile);
-    attachHoverArea(g, data, scales, layout);
+    const compact = scales.x1.step() < measureMaxValueWidth(svg, data, isMobile ? "11px" : "12.5px") + 1;
+    drawColumns(g, data, scales, layout, isMobile, compact);
+    attachHoverArea(g, data, scales, layout, compact);
 
     drawLegend();
   });

@@ -18,6 +18,11 @@ const MOBILE_BREAKPOINT = 600;
 // etroite) et est reliee par une ligne de rappel, empilee avec les autres.
 const INNER_LABEL_MIN_PERCENT = 5;
 
+// Mobile : camembert en haut (hauteur fixe), légende en dessous sur toute la
+// largeur — à côté, les noms de cours longs recouvraient le camembert.
+const MOBILE_PIE_HEIGHT = 270;
+const MOBILE_LEGEND_ROW_HEIGHT = 18;
+
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
 
@@ -67,9 +72,11 @@ function buildColorScale(data) {
 // Légende
 // ============================================================
 
-function drawLegend(svg, data, colorFor, legendWidth, panelHeight, isMobile) {
-  const rowHeight = isMobile ? 28 : 31;
-  const startY = (panelHeight - data.length * rowHeight) / 2;
+// startY = null : légende centrée verticalement à gauche du camembert (desktop) ;
+// sinon (mobile) légende sous le camembert, sur toute la largeur.
+function drawLegend(svg, data, colorFor, legendWidth, panelHeight, isMobile, startYOverride = null) {
+  const rowHeight = startYOverride === null ? (isMobile ? 28 : 31) : MOBILE_LEGEND_ROW_HEIGHT;
+  const startY = startYOverride === null ? (panelHeight - data.length * rowHeight) / 2 : startYOverride;
 
   const legend = svg.append("g").attr("transform", `translate(14, ${startY})`);
 
@@ -186,7 +193,7 @@ function drawInnerLabels(item, innerLabelArc, isMobile) {
       .attr("class", "inner-label")
       .attr("transform", d => `translate(${innerLabelArc.centroid(d)})`)
       .attr("text-anchor", "middle")
-      .style("font-size", isMobile ? "11.5px" : "13.5px")
+      .style("font-size", isMobile ? "10.5px" : "13.5px")
       .style("opacity", 0)
   );
 
@@ -313,6 +320,8 @@ function drawOuterLabels(smallItems, labelY, outerRadius, isMobile, swatchSize, 
 // Nom du type de cours affiche au survol : centre au-dessus du camembert
 // pour les petites parts, a cote de la part elle-meme pour les grandes.
 function attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile) {
+  // Mobile : le nom survolé est toujours centré en haut (à côté de la part,
+  // un nom long sortait du cadre sur un écran étroit).
   const nameLabel = svg.append("text")
     .attr("class", "hover-name")
     .style("font-family", "Arial")
@@ -335,7 +344,7 @@ function attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile) {
       node.select("text.outer-label").text(`${formatPercent(d.data.Percent)} (${formatSwiss(d.data.Value)})`);
 
       const isBig = d.data.Percent >= INNER_LABEL_MIN_PERCENT;
-      if (isBig) {
+      if (isBig && !isMobile) {
         const [ox, oy] = outerAnchorArc.centroid(d);
         const side = midAngle(d) < Math.PI ? 1 : -1;
         nameLabel
@@ -346,7 +355,7 @@ function attachPieHover(item, svg, cx, cy, outerAnchorArc, isMobile) {
         nameLabel
           .attr("text-anchor", "middle")
           .attr("x", cx)
-          .attr("y", 22);
+          .attr("y", isMobile ? 14 : 22);
       }
       nameLabel.text(d.data.Label).style("opacity", 1);
     })
@@ -400,12 +409,10 @@ function drawChart() {
 
   const containerWidth = document.getElementById("chart").clientWidth;
   const isMobile = containerWidth < MOBILE_BREAKPOINT;
-  const panelHeight = isMobile ? 380 : 460;
 
   const svg = d3.select("#chart")
     .append("svg")
-    .attr("width", containerWidth)
-    .attr("height", panelHeight);
+    .attr("width", containerWidth);
 
   d3.csv("data_" + currentLang + ".csv").then(raw => {
 
@@ -417,18 +424,30 @@ function drawChart() {
 
     const colorFor = buildColorScale(data);
 
+    if (isMobile) {
+      const legendTop = MOBILE_PIE_HEIGHT + 6;
+      svg.attr("height", legendTop + data.length * MOBILE_LEGEND_ROW_HEIGHT);
+      // 52px de marge pour les étiquettes extérieures des petites parts ;
+      // 20px en haut pour le nom affiché au survol.
+      const radius = Math.max(40, Math.min(containerWidth, MOBILE_PIE_HEIGHT - 20) / 2 - 52);
+      drawLegend(svg, data, colorFor, containerWidth, null, isMobile, legendTop);
+      drawPie(svg, data, colorFor, containerWidth / 2, 20 + (MOBILE_PIE_HEIGHT - 20) / 2, radius, isMobile);
+      return;
+    }
+
+    const panelHeight = 460;
+    svg.attr("height", panelHeight);
+
     // Largeur plafonnee sur desktop : en pourcentage seul, un conteneur tres
     // large laissait un grand vide entre la legende et le camembert.
-    const legendWidth = isMobile
-      ? Math.round(containerWidth * 0.44)
-      : Math.min(260, Math.round(containerWidth * 0.34));
+    const legendWidth = Math.min(260, Math.round(containerWidth * 0.34));
     const pieAreaWidth = containerWidth - legendWidth;
 
     // Marge laissee pour les etiquettes + traits de rappel des petites
     // parts, qui debordent legerement au-dela du cercle lui-meme.
     const outerRadius = Math.max(
       40,
-      Math.min(pieAreaWidth, panelHeight) / 2 - (isMobile ? 52 : 64)
+      Math.min(pieAreaWidth, panelHeight) / 2 - 64
     );
 
     drawLegend(svg, data, colorFor, legendWidth, panelHeight, isMobile);

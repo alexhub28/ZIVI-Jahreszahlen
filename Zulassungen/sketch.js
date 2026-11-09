@@ -185,7 +185,8 @@ function drawYAxis(g, y, isMobile) {
 
 // --- Repère (en haut à gauche, sous le titre) : explique le marqueur
 // posé sur les années annotées (cf. ANNOTATIONS / drawAnnotationMarkers).
-function drawHint(svg, margin, isMobile) {
+// Retourne la hauteur ajoutée (px) quand le texte passe sur 2 lignes.
+function drawHint(svg, margin, isMobile, containerWidth) {
   const hint = svg.append("g")
     .attr("transform", `translate(${margin.left}, 6)`);
 
@@ -207,8 +208,19 @@ function drawHint(svg, margin, isMobile) {
     .attr("y", 10)
     .style("font-family", "Arial")
     .style("font-size", hintFontSize)
-    .style("fill", "#555")
-    .text(HINT_LOOKUP[currentLang]);
+    .style("fill", "#555");
+
+  // Retour à la ligne si le texte (à sa taille agrandie au survol) dépasse
+  // la largeur disponible — il était coupé à droite sur écran étroit.
+  const available = containerWidth - margin.left - 12 - 4;
+  const lines = wrapHintLines(svg, HINT_LOOKUP[currentLang], available, hintFontSizeHover);
+  hintText.selectAll("tspan")
+    .data(lines)
+    .enter()
+    .append("tspan")
+    .attr("x", 12)
+    .attr("dy", (line, i) => (i === 0 ? 0 : 1.25) + "em")
+    .text(line => line);
 
   hintText
     .on("mouseover", function () {
@@ -217,6 +229,37 @@ function drawHint(svg, margin, isMobile) {
     .on("mouseout", function () {
       d3.select(this).transition().duration(150).style("font-size", hintFontSize);
     });
+
+  return (lines.length - 1) * parseFloat(hintFontSizeHover) * 1.25;
+}
+
+// Découpe le texte d'aide en lignes qui tiennent dans maxWidth.
+function wrapHintLines(svg, text, maxWidth, fontSize) {
+  const probe = svg.append("text")
+    .style("font-family", "Arial")
+    .style("font-size", fontSize)
+    .style("opacity", 0);
+  const lines = [];
+  let current = "";
+  // Un ":" isolé (typographie française) reste collé au mot qui le précède.
+  const words = text.split(" ").reduce((acc, w) => {
+    if (w.startsWith(":") && acc.length) acc[acc.length - 1] += " " + w;
+    else acc.push(w);
+    return acc;
+  }, []);
+  words.forEach(word => {
+    const candidate = current ? current + " " + word : word;
+    probe.text(candidate);
+    if (probe.node().getComputedTextLength() > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  });
+  if (current) lines.push(current);
+  probe.remove();
+  return lines;
 }
 
 function drawBars(g, data, scales, layout) {
@@ -415,10 +458,12 @@ function drawChart() {
       .attr("width", layout.width)
       .attr("height", layout.height);
 
-    drawHint(svg, layout.margin, isMobile);
+    // Texte d'aide sur 2 lignes (écran étroit) : le graphique descend d'autant.
+    const hintExtra = drawHint(svg, layout.margin, isMobile, containerWidth);
+    svg.attr("height", layout.height + hintExtra);
 
     const g = svg.append("g")
-      .attr("transform", `translate(${layout.margin.left}, ${layout.margin.top})`);
+      .attr("transform", `translate(${layout.margin.left}, ${layout.margin.top + hintExtra})`);
 
     drawGrid(g, scales.y, layout.innerWidth);
     drawYAxis(g, scales.y, isMobile);

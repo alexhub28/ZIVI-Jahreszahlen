@@ -119,13 +119,13 @@ function createScales(data, innerWidth, innerHeight) {
   const x0 = d3.scaleBand()
     .domain(data.map(d => d.year))
     .range([0, innerWidth])
-    .paddingInner(0.3)
-    .paddingOuter(0.15);
+    .paddingInner(0.2)
+    .paddingOuter(0.1);
 
   const x1 = d3.scaleBand()
     .domain(SERIES.map(s => s.key))
     .range([0, x0.bandwidth()])
-    .padding(0.18);
+    .padding(0.1);
 
   const maxLeftRaw = d3.max(data, d => d3.max(SERIES, s => d[s.key]));
   const maxLeft = Math.ceil(maxLeftRaw / 100) * 100;
@@ -247,8 +247,25 @@ function drawServiceLine(g, data, scales) {
 // Barres
 // ============================================================
 
+// --- Largeur du plus grand nombre affiché, pour savoir si les étiquettes tiennent ---
+function measureMaxValueWidth(svg, data, fontSize) {
+  const probe = svg.append("text")
+    .style("font-family", "Arial")
+    .style("font-size", fontSize)
+    .style("visibility", "hidden");
+  let maxW = 0;
+  data.forEach(d => SERIES.forEach(s => {
+    probe.text(formatSwiss(d[s.key]));
+    maxW = Math.max(maxW, probe.node().getComputedTextLength());
+  }));
+  probe.remove();
+  return maxW;
+}
+
 // --- Barres groupées avec animation d'apparition ---
-function drawBars(g, data, scales, innerHeight, isMobile) {
+// compact = les 5 valeurs d'une année ne tiennent pas côte à côte : seule la
+// valeur Total reste affichée, le détail passe dans l'infobulle au survol.
+function drawBars(g, data, scales, innerHeight, isMobile, compact) {
   const { x0, x1, yLeft } = scales;
 
   const groups = g.selectAll("g.year-group")
@@ -275,6 +292,8 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
       .attr("y", d => yLeft(d[s.key]))
       .attr("height", d => innerHeight - yLeft(d[s.key]));
 
+    if (compact && s.key !== "Total") return;
+
     // Valeur principale, en gras, compteur animé
     const mainLabel = groups.append("text")
       .attr("class", `value-main value-${s.key}`)
@@ -282,7 +301,7 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
       .attr("y", d => yLeft(d[s.key]) - 11)
       .attr("text-anchor", "middle")
       .style("font-family", "Arial")
-      .style("font-size", isMobile ? "10.5px" : "12.5px")
+      .style("font-size", isMobile ? "10.5px" : "11.5px")
       .style("font-weight", "normal")
       .style("fill", "#111")
       .style("paint-order", "stroke")
@@ -302,13 +321,15 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
 
     // Valeur interne entre parenthèses : masquée par défaut, révélée
     // uniquement au survol de son année (cf. attachHoverInteraction).
+    // En mode compact, elle est dans l'infobulle.
+    if (compact) return;
     groups.append("text")
       .attr("class", `value-intern value-${s.key}`)
       .attr("x", x1(s.key) + x1.bandwidth() / 2)
       .attr("y", d => yLeft(d[s.key]) - 4)
       .attr("text-anchor", "middle")
       .style("font-family", "Arial")
-      .style("font-size", isMobile ? "10px" : "11.5px")
+      .style("font-size", isMobile ? "10px" : "10.5px")
       .style("fill", "#888")
       .style("paint-order", "stroke")
       .style("stroke", "#fff")
@@ -324,8 +345,9 @@ function drawBars(g, data, scales, innerHeight, isMobile) {
 // ============================================================
 
 // --- Survol par année : isole le groupe, pastille sur la ligne ---
-function attachHoverInteraction(g, data, scales, innerHeight, margin) {
+function attachHoverInteraction(g, data, scales, innerHeight, margin, compact) {
   const { x0, yRight } = scales;
+  const tooltip = compact ? createTooltip() : null;
 
   const hoverDot = g.append("circle")
     .attr("r", 5)
@@ -344,12 +366,14 @@ function attachHoverInteraction(g, data, scales, innerHeight, margin) {
 
     if (year === null) {
       hoverDot.style("opacity", 0);
+      if (tooltip) tooltip.style("opacity", 0);
     } else {
       const d = data.find(dd => dd.year === year);
       hoverDot
         .attr("cx", x0(year) + x0.bandwidth() / 2)
         .attr("cy", yRight(d.diensttage))
         .style("opacity", 1);
+      if (tooltip) showTooltip(tooltip, d, x0(year) + x0.bandwidth() / 2 + margin.left);
     }
   }
 
@@ -366,6 +390,43 @@ function attachHoverInteraction(g, data, scales, innerHeight, margin) {
     .style("cursor", "pointer")
     .on("mouseover", (event, d) => highlight(d.year))
     .on("mouseout", () => highlight(null));
+}
+
+// --- Infobulle du mode compact : les 5 valeurs (+ internes) et les jours de service ---
+function createTooltip() {
+  return d3.select("#chart").append("div")
+    .attr("class", "rd-tooltip")
+    .style("position", "absolute")
+    .style("top", "0px")
+    .style("pointer-events", "none")
+    .style("opacity", 0)
+    .style("background", "#fff")
+    .style("border", "1px solid #ddd")
+    .style("border-radius", "4px")
+    .style("box-shadow", "0 2px 6px rgba(0,0,0,0.12)")
+    .style("padding", "6px 8px")
+    .style("font-family", "Arial")
+    .style("font-size", "11px")
+    .style("line-height", "1.45")
+    .style("color", "#111")
+    .style("white-space", "nowrap");
+}
+
+function showTooltip(tooltip, d, centerX) {
+  const swatch = c => `<span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;background:${c}"></span>`;
+  const rows = SERIES.map(s =>
+    `<div>${swatch(s.color)}${formatSwiss(d[s.key])} <span style="color:#888">(${formatSwiss(d[s.internKey])})</span></div>`
+  ).join("");
+  const line = `<div><span style="display:inline-block;width:10px;border-top:2px solid ${LINE_COLOR};margin-right:4px;vertical-align:middle"></span>${(d.diensttage / 1e6).toFixed(2)}</div>`;
+  tooltip.html(`<div style="font-weight:bold;margin-bottom:2px">${d.year}</div>${rows}${line}`)
+    .style("opacity", 1);
+
+  // Placée à droite de l'année survolée, ou à gauche si elle déborderait.
+  const chartW = document.getElementById("chart").clientWidth;
+  const tipW = tooltip.node().offsetWidth;
+  let left = centerX + 14;
+  if (left + tipW > chartW) left = centerX - 14 - tipW;
+  tooltip.style("left", `${Math.max(0, left)}px`);
 }
 
 // ============================================================
@@ -421,10 +482,9 @@ function drawChart() {
       left: isMobile ? 60 : 84
     };
 
-    const containerInnerWidth = containerWidth - margin.left - margin.right;
-    const minInnerWidth = data.length * (isMobile ? 130 : 170);
-    const innerWidth = Math.max(containerInnerWidth, minInnerWidth);
-    const width = innerWidth + margin.left + margin.right;
+    // Les 6 années tiennent toujours dans la largeur disponible (plus de scroll horizontal).
+    const innerWidth = containerWidth - margin.left - margin.right;
+    const width = containerWidth;
 
     const innerHeight = isMobile ? 210 : 260;
     const height = margin.top + innerHeight + margin.bottom;
@@ -439,6 +499,10 @@ function drawChart() {
 
     const scales = createScales(data, innerWidth, innerHeight);
 
+    // Mode compact si les nombres de deux barres voisines se toucheraient.
+    const valueFontSize = isMobile ? "10.5px" : "11.5px";
+    const compact = scales.x1.step() < measureMaxValueWidth(svg, data, valueFontSize) + 1;
+
     drawLeftAxis(g, scales, innerWidth, innerHeight, isMobile);
     drawRightAxis(g, scales, innerWidth, isMobile);
 
@@ -446,7 +510,7 @@ function drawChart() {
     drawAxisTitle(g, innerWidth + (margin.right - (isMobile ? 14 : 18)), AXIS_RIGHT_LABEL_LOOKUP[currentLang], innerHeight, isMobile);
 
     drawServiceLine(g, data, scales);
-    drawBars(g, data, scales, innerHeight, isMobile);
+    drawBars(g, data, scales, innerHeight, isMobile, compact);
 
     // --- Années sous les groupes ---
     g.selectAll("text.year-label")
@@ -462,7 +526,7 @@ function drawChart() {
       .style("fill", "#111")
       .text(d => d.year);
 
-    attachHoverInteraction(g, data, scales, innerHeight, margin);
+    attachHoverInteraction(g, data, scales, innerHeight, margin, compact);
 
     drawLegend();
   });

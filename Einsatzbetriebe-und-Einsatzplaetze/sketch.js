@@ -115,7 +115,9 @@ function drawBars(g, data, series, x0, x1, y, innerHeight) {
 
 // Valeur ancrée sur le bord extérieur de sa barre (pas centrée), pour
 // s'étendre vers l'espace libre plutôt que sur la barre voisine.
-function drawValueLabels(g, data, series, x0, x1, y, innerHeight, isMobile) {
+// compact : les valeurs de deux années voisines se chevaucheraient (écran
+// étroit) — masquées par défaut, affichées seulement pour l'année survolée.
+function drawValueLabels(g, data, series, x0, x1, y, innerHeight, isMobile, compact) {
   const valueAnchor = { betriebe: "end", plaetze: "start" };
   const valueX = {
     betriebe: d => x0(d.year) + x1("betriebe") + x1.bandwidth(),
@@ -135,6 +137,8 @@ function drawValueLabels(g, data, series, x0, x1, y, innerHeight, isMobile) {
       .style("font-size", isMobile ? "10.5px" : "12.5px")
       .style("font-weight", "normal")
       .style("fill", "#111")
+      .style("opacity", compact ? 0 : 1)
+      .style("pointer-events", "none")
       .text("0")
       .transition()
       .delay((d, i) => i * 70 + si * 35)
@@ -153,11 +157,18 @@ function drawValueLabels(g, data, series, x0, x1, y, innerHeight, isMobile) {
 // ============================================================
 
 // --- Survol par année : met en évidence une colonne ---
-function attachHoverInteraction(g, data, x0, innerHeight, margin) {
+function attachHoverInteraction(g, data, x0, innerHeight, margin, compact) {
   function highlight(year) {
-    g.selectAll(".bar, .value, .label")
+    g.selectAll(compact ? ".bar, .label" : ".bar, .value, .label")
       .transition().duration(150)
       .style("opacity", d => (year === null || d.year === year) ? 1 : 0.3);
+
+    if (compact) {
+      // Transition nommée "hover" : n'interrompt pas le compteur animé du chargement.
+      g.selectAll(".value")
+        .transition("hover").duration(150)
+        .style("opacity", d => (year !== null && d.year === year) ? 1 : 0);
+    }
   }
 
   g.selectAll("rect.hit")
@@ -197,22 +208,36 @@ function drawChart() {
       }))
       .sort((a, b) => a.year - b.year);
 
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("width", width);
+
+    // Mode compact si les valeurs d'une même série (même hauteur, d'une
+    // année à l'autre) se toucheraient : un écart d'une année (step) doit
+    // contenir la valeur la plus large.
+    const valueFontSize = isMobile ? "10.5px" : "12.5px";
+    const probe = svg.append("text").style("font-family", "Arial").style("font-size", valueFontSize)
+      .text(formatSwiss(d3.max(data, d => Math.max(d.betriebe, d.plaetze))));
+    const maxValueWidth = probe.node().getComputedTextLength();
+    probe.remove();
+    const stepEstimate = width / data.length;
+    const compact = stepEstimate < maxValueWidth + 6;
+
     const legendHeight = 50;
+    // compact : marges un peu plus larges pour que la valeur de la première
+    // et de la dernière année (affichée au survol) reste dans le cadre.
+    const sideMargin = compact ? 24 : (isMobile ? 10 : 20);
     const margin = {
       top: legendHeight,
-      right: isMobile ? 10 : 20,
+      right: sideMargin,
       bottom: 22,
-      left: isMobile ? 10 : 20
+      left: sideMargin
     };
 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = 320;
     const height = margin.top + innerHeight + margin.bottom;
-
-    const svg = d3.select("#chart")
-      .append("svg")
-      .attr("width", width)
-      .attr("height", height);
+    svg.attr("height", height);
 
     drawLegend(svg, margin, isMobile);
 
@@ -242,7 +267,7 @@ function drawChart() {
     ];
 
     drawBars(g, data, series, x0, x1, y, innerHeight);
-    drawValueLabels(g, data, series, x0, x1, y, innerHeight, isMobile);
+    drawValueLabels(g, data, series, x0, x1, y, innerHeight, isMobile, compact);
 
     // --- Années sous les barres ---
     g.selectAll("text.label")
@@ -254,10 +279,10 @@ function drawChart() {
       .attr("y", innerHeight + 20)
       .attr("text-anchor", "middle")
       .style("font-family", "Arial")
-      .style("font-size", isMobile ? "11.5px" : "13.5px")
+      .style("font-size", x0.step() < 32 ? "10px" : (isMobile ? "11.5px" : "13.5px")) // années serrées sur écran étroit
       .style("fill", "#111")
       .text(d => d.year);
 
-    attachHoverInteraction(g, data, x0, innerHeight, margin);
+    attachHoverInteraction(g, data, x0, innerHeight, margin, compact);
   });
 }

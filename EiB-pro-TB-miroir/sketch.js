@@ -136,12 +136,13 @@ function wrapLabelLines(svg, label, maxWidth, fontSize) {
 // Légende — un item centré au-dessus de chaque panneau
 // ============================================================
 
+// cx = null : item aligné à gauche (x = 0), utilisé en mode stacked (écran étroit).
 function drawLegendItem(svg, cx, y, color, label, fontSize) {
   const textWidth = measureTextWidth(svg, label, fontSize);
   const swatchSize = 11;
   const gap = 6;
   const totalWidth = swatchSize + gap + textWidth;
-  const startX = cx - totalWidth / 2;
+  const startX = cx === null ? 0 : cx - totalWidth / 2;
 
   const item = svg.append("g").attr("transform", `translate(${startX}, ${y})`);
 
@@ -223,7 +224,8 @@ function drawSideBars(g, data, y0, lengthScale, panelWidth, color, key, side, is
 // ============================================================
 
 function drawSideAxis(g, scale, panelWidth, innerHeight, isMobile) {
-  const tickCount = isMobile ? 3 : 4;
+  // Panneau étroit : 2 graduations seulement, sinon les nombres se chevauchent.
+  const tickCount = panelWidth < 110 ? 2 : (isMobile ? 3 : 4);
   const clampedTicks = scale.ticks(tickCount).filter(v => {
     const x = scale(v);
     return x >= -0.5 && x <= panelWidth + 0.5;
@@ -239,7 +241,7 @@ function drawSideAxis(g, scale, panelWidth, innerHeight, isMobile) {
     )
     .selectAll("text")
     .style("font-family", "Arial")
-    .style("font-size", isMobile ? "8.5px" : "9.5px")
+    .style("font-size", isMobile ? "9px" : "9.5px")
     .style("fill", "#555");
 }
 
@@ -255,12 +257,13 @@ const CENTER_LABEL_FONT_SIZE_HOVER = { mobile: "11.5px", desktop: "12.5px" };
 const VALUE_FONT_SIZE = { mobile: "9.5px", desktop: "10.5px" };
 const VALUE_FONT_SIZE_HOVER = { mobile: "11.5px", desktop: "12.5px" };
 
-function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg) {
+// stacked : écran étroit, chaque nom sur une ligne, centré au-dessus de sa paire de barres.
+function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg, stacked) {
   const fontSize = isMobile ? "9.5px" : "10.5px";
   const maxTextWidth = centerLabelWidth - 16;
   const lineHeight = 1.15; // em
 
-  const labelLines = new Map(data.map(d => [d, wrapLabelLines(svg, d.label, maxTextWidth, fontSize)]));
+  const labelLines = new Map(data.map(d => [d, stacked ? [d.label] : wrapLabelLines(svg, d.label, maxTextWidth, fontSize)]));
 
   const texts = g.selectAll("text.domain-label")
     .data(data)
@@ -268,9 +271,9 @@ function drawCenterLabels(g, data, y0, centerLabelWidth, isMobile, svg) {
     .append("text")
     .attr("class", "domain-label")
     .attr("x", centerLabelWidth / 2)
-    .attr("y", d => y0(d.label) + y0.bandwidth() / 2)
+    .attr("y", d => stacked ? y0(d.label) - 4 : y0(d.label) + y0.bandwidth() / 2)
     .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
+    .attr("dominant-baseline", stacked ? "auto" : "middle")
     .style("font-family", "Arial")
     .style("font-weight", "normal")
     .style("fill", "#333")
@@ -382,20 +385,22 @@ function highlight(svg, label, isMobile, centerLabelWidth, containerWidth) {
     });
 }
 
-function attachHover(svg, data, y0, hitOffsetX, hitWidth, hitOffsetY, isMobile, centerLabelWidth, containerWidth) {
+// labelSpace = largeur dans laquelle le nom survolé peut grandir (colonne
+// centrale, ou toute la largeur en mode stacked).
+function attachHover(svg, data, y0, hitOffsetX, hitWidth, hitOffsetY, isMobile, labelSpace, containerWidth, stacked) {
   svg.selectAll("rect.hit")
     .data(data)
     .enter()
     .append("rect")
     .attr("class", "hit")
     .attr("x", hitOffsetX)
-    .attr("y", d => hitOffsetY + y0(d.label) - (y0.step() - y0.bandwidth()) / 2)
+    .attr("y", d => hitOffsetY + y0(d.label) - (y0.step() - y0.bandwidth()) / (stacked ? 1 : 2)) // stacked : couvre aussi le nom au-dessus
     .attr("width", hitWidth)
     .attr("height", y0.step())
     .attr("fill", "transparent")
     .style("cursor", "pointer")
-    .on("mouseover", (event, d) => highlight(svg, d.label, isMobile, centerLabelWidth, containerWidth))
-    .on("mouseout", () => highlight(svg, null, isMobile, centerLabelWidth, containerWidth));
+    .on("mouseover", (event, d) => highlight(svg, d.label, isMobile, labelSpace, containerWidth))
+    .on("mouseout", () => highlight(svg, null, isMobile, labelSpace, containerWidth));
 }
 
 // ============================================================
@@ -422,29 +427,35 @@ function drawChart() {
     data.sort((a, b) => b.plaetze - a.plaetze);
 
     const rowHeight = isMobile ? 42 : 48;
-    const legendHeight = isMobile ? 30 : 32;
-    const margin = {
-      top: legendHeight + 12,
-      bottom: 24
-    };
-
-    const innerHeight = data.length * rowHeight;
-    const height = margin.top + innerHeight + margin.bottom;
 
     const svg = d3.select("#chart")
       .append("svg")
-      .attr("width", containerWidth)
-      .attr("height", height);
+      .attr("width", containerWidth);
 
     // Colonne centrale dimensionnée sur le nom le plus long (mesuré),
     // plafonnée pour laisser la place aux deux panneaux de barres.
     const centerFontSize = isMobile ? "9.5px" : "10.5px";
     const centerLabelCap = isMobile ? CENTER_LABEL_MAX_MOBILE : CENTER_LABEL_MAX_DESKTOP;
     const rawMaxLabelWidth = d3.max(data, d => measureTextWidth(svg, d.label, centerFontSize));
-    const centerLabelWidth = Math.min(centerLabelCap, rawMaxLabelWidth + 16);
-
     const outerValueMargin = isMobile ? OUTER_VALUE_MARGIN_MOBILE : OUTER_VALUE_MARGIN_DESKTOP;
-    const panelWidth = Math.max(70, (containerWidth - centerLabelWidth - outerValueMargin * 2) / 2);
+
+    // Écran étroit : si les panneaux de barres tomberaient sous 90px, la
+    // colonne centrale disparaît et chaque nom passe au-dessus de sa paire
+    // de barres (les deux panneaux récupèrent la largeur).
+    const normalCenterWidth = Math.min(centerLabelCap, rawMaxLabelWidth + 16);
+    const stacked = (containerWidth - normalCenterWidth - outerValueMargin * 2) / 2 < 90;
+    const centerLabelWidth = stacked ? 10 : normalCenterWidth;
+    const panelWidth = (containerWidth - centerLabelWidth - outerValueMargin * 2) / 2;
+
+    // stacked : légende sur 2 lignes à gauche (les 2 items centrés ne tiennent
+    // plus côte à côte) + place pour le premier nom au-dessus de ses barres.
+    const legendHeight = stacked ? 50 : (isMobile ? 30 : 32);
+    const margin = {
+      top: legendHeight + (stacked ? 22 : 12),
+      bottom: 20 // graduations de l'axe (9.5px + tick) : 20px suffisent, tient sous 500px à 1000px
+    };
+    const innerHeight = data.length * rowHeight;
+    svg.attr("height", margin.top + innerHeight + margin.bottom);
 
     const maxBetriebe = d3.max(data, d => d.betriebe);
     const maxPlaetze = d3.max(data, d => d.plaetze);
@@ -467,15 +478,16 @@ function drawChart() {
     const y0 = d3.scaleBand()
       .domain(data.map(d => d.label))
       .range([0, innerHeight])
-      .paddingInner(0.28)
-      .paddingOuter(0.14);
+      .paddingInner(stacked ? 0.5 : 0.28)
+      .paddingOuter(stacked ? 0.05 : 0.14);
 
     const leftX = outerValueMargin;
     const centerX = outerValueMargin + panelWidth;
     const rightX = outerValueMargin + panelWidth + centerLabelWidth;
 
-    drawLegendItem(svg, leftX + panelWidth / 2, 6, BASE_BETRIEBE, legendLookup[currentLang][0].text, isMobile ? "11px" : "12.5px");
-    drawLegendItem(svg, rightX + panelWidth / 2, 6, BASE_PLAETZE, legendLookup[currentLang][1].text, isMobile ? "11px" : "12.5px");
+    const legendFont = isMobile ? "11px" : "12.5px";
+    drawLegendItem(svg, stacked ? null : leftX + panelWidth / 2, 6, BASE_BETRIEBE, legendLookup[currentLang][0].text, legendFont);
+    drawLegendItem(svg, stacked ? null : rightX + panelWidth / 2, stacked ? 28 : 6, BASE_PLAETZE, legendLookup[currentLang][1].text, legendFont);
 
     const gLeft = svg.append("g").attr("transform", `translate(${leftX}, ${margin.top})`);
     const gCenter = svg.append("g").attr("transform", `translate(${centerX}, ${margin.top})`);
@@ -487,8 +499,9 @@ function drawChart() {
     drawSideBars(gRight, data, y0, rightScale, panelWidth, BASE_PLAETZE, "plaetze", "right", isMobile);
     drawSideAxis(gLeft, leftScale, panelWidth, innerHeight, isMobile);
     drawSideAxis(gRight, rightScale, panelWidth, innerHeight, isMobile);
-    drawCenterLabels(gCenter, data, y0, centerLabelWidth, isMobile, svg);
+    drawCenterLabels(gCenter, data, y0, centerLabelWidth, isMobile, svg, stacked);
 
-    attachHover(svg, data, y0, leftX, panelWidth * 2 + centerLabelWidth, margin.top, isMobile, centerLabelWidth, containerWidth);
+    attachHover(svg, data, y0, leftX, panelWidth * 2 + centerLabelWidth, margin.top, isMobile,
+      stacked ? containerWidth : centerLabelWidth, containerWidth, stacked);
   });
 }

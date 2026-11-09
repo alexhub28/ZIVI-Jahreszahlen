@@ -108,16 +108,16 @@ function measureMaxLabelWidth(svg, data, fontSize) {
 const ROW_LABEL_FONT_SIZE = { mobile: "11px", desktop: "12.5px" };
 const ROW_LABEL_FONT_SIZE_HOVER = { mobile: "13px", desktop: "15px" };
 
-function drawRowLabels(g, data, y, margin, isMobile) {
+function drawRowLabels(g, data, y, margin, isMobile, stacked) {
   g.selectAll("text.label")
     .data(data)
     .enter()
     .append("text")
     .attr("class", "label")
-    .attr("x", -margin.left + 8)
-    .attr("y", d => y(d.Label) + y.bandwidth() / 2)
+    .attr("x", stacked ? 0 : -margin.left + 8)
+    .attr("y", d => stacked ? y(d.Label) - 4 : y(d.Label) + y.bandwidth() / 2)
     .attr("text-anchor", "start")
-    .attr("dominant-baseline", "middle")
+    .attr("dominant-baseline", stacked ? "auto" : "middle")
     .style("font-family", "Arial")
     .style("font-size", isMobile ? ROW_LABEL_FONT_SIZE.mobile : ROW_LABEL_FONT_SIZE.desktop)
     .style("font-weight", "normal")
@@ -198,7 +198,7 @@ function drawAxisTitle(svg, margin, innerWidth, height, isMobile) {
 }
 
 // --- Survol par ligne : met en évidence label + barre + valeur ---
-function highlight(g, label, isMobile, margin, innerWidth) {
+function highlight(g, label, isMobile, margin, innerWidth, stacked) {
   g.selectAll(".bar")
     .transition().duration(150)
     .style("opacity", d => (label === null || d.Label === label) ? 1 : 0.3);
@@ -225,7 +225,9 @@ function highlight(g, label, isMobile, margin, innerWidth) {
     // largeur reelle une fois le survol applique.
     sel.style("font-weight", "bold").style("font-size", hoverSize);
     const measuredWidth = sel.node().getComputedTextLength();
-    const available = margin.left - 8 - 4; // 4px de marge de sécurité avant la barre
+    const available = stacked
+      ? innerWidth + margin.right - 4 // label au-dessus de la barre : toute la largeur
+      : margin.left - 8 - 4; // 4px de marge de sécurité avant la barre
     if (measuredWidth > available) {
       const scaledPx = Math.max(parseFloat(baseSize), parseFloat(hoverSize) * (available / measuredWidth));
       targetSize = scaledPx + "px";
@@ -311,20 +313,20 @@ function positionTooltip(tooltipParts, d, mx, my, chartWidth) {
   tooltip.style("opacity", 1);
 }
 
-function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg, isMobile) {
+function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg, isMobile, stacked) {
   g.selectAll("rect.hit")
     .data(data)
     .enter()
     .append("rect")
     .attr("class", "hit")
     .attr("x", -margin.left)
-    .attr("y", d => y(d.Label) - (y.step() - y.bandwidth()) / 2)
+    .attr("y", d => y(d.Label) - (y.step() - y.bandwidth()) / (stacked ? 1 : 2)) // stacked : couvre aussi le label au-dessus
     .attr("width", innerWidth + margin.left + margin.right)
     .attr("height", y.step())
     .attr("fill", "transparent")
     .style("cursor", "pointer")
     .on("mouseover", (event, d) => {
-      highlight(g, d.Label, isMobile, margin, innerWidth);
+      highlight(g, d.Label, isMobile, margin, innerWidth, stacked);
       const [mx, my] = d3.pointer(event, svg.node());
       positionTooltip(tooltipParts, d, mx, my, innerWidth + margin.left + margin.right);
     })
@@ -333,7 +335,7 @@ function attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg, isM
       positionTooltip(tooltipParts, d, mx, my, innerWidth + margin.left + margin.right);
     })
     .on("mouseout", () => {
-      highlight(g, null, isMobile, margin, innerWidth);
+      highlight(g, null, isMobile, margin, innerWidth, stacked);
       tooltipParts.tooltip.style("opacity", 0);
     });
 }
@@ -368,11 +370,15 @@ function drawChart() {
     const labelFontSize = isMobile ? "11px" : "12.5px";
     const maxLabelWidth = measureMaxLabelWidth(svg, data, labelFontSize);
 
+    // Écran étroit : si la colonne de labels mangerait plus de 45 % de la
+    // largeur, chaque nom passe au-dessus de sa barre (barres pleine largeur).
+    const stacked = 8 + maxLabelWidth + 16 > width * 0.45;
+
     const margin = {
-      top: 3,   // écart final entre le titre HTML et le graphique
+      top: stacked ? 16 : 3,   // stacked : place pour le premier label au-dessus de sa barre
       right: isMobile ? 42 : 55,   // assez de place pour "100.0 %"
       bottom: 44,
-      left: 8 + maxLabelWidth + 16   // 8px avant le label, largeur du label, 16px avant la barre
+      left: stacked ? 8 : 8 + maxLabelWidth + 16   // 8px avant le label, largeur du label, 16px avant la barre
     };
 
     const innerWidth = width - margin.left - margin.right;
@@ -385,18 +391,19 @@ function drawChart() {
     const y = d3.scaleBand()
       .domain(data.map(d => d.Label))
       .range([0, innerHeight])
-      .padding(0.3);
+      .paddingInner(stacked ? 0.6 : 0.3)
+      .paddingOuter(stacked ? 0.1 : 0.3);
 
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
     drawBars(g, data, x, y, colorFor);
-    drawRowLabels(g, data, y, margin, isMobile);
+    drawRowLabels(g, data, y, margin, isMobile, stacked);
     drawValueLabels(g, data, x, y, isMobile);
     drawXAxis(g, x, innerWidth, innerHeight, isMobile);
     drawAxisTitle(svg, margin, innerWidth, height, isMobile);
 
     const tooltipParts = createTooltip(svg);
-    attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg, isMobile);
+    attachHoverAreas(g, data, y, margin, innerWidth, tooltipParts, svg, isMobile, stacked);
   });
 }

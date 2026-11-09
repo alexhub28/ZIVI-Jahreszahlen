@@ -127,11 +127,16 @@ function drawChart() {
 
     const legendHeight = 40;
     const rowHeight = isMobile ? 68 : 84;
+    const marginRight = isMobile ? 70 : 100;
+    // Écran étroit : si la colonne de labels laisserait moins de 160px aux
+    // barres, chaque catégorie passe au-dessus de sa paire de barres.
+    const normalLeft = 10 + maxLabelWidth + (isMobile ? 20 : 30);
+    const stacked = width - normalLeft - marginRight < 160;
     const margin = {
       top: legendHeight + 20,
-      right: isMobile ? 70 : 100,
+      right: marginRight,
       bottom: 10,
-      left: 10 + maxLabelWidth + (isMobile ? 20 : 30)
+      left: stacked ? 10 : normalLeft
     };
 
     const innerWidth = width - margin.left - margin.right;
@@ -174,8 +179,8 @@ function drawChart() {
     const y0 = d3.scaleBand()
       .domain(data.map(d => d.key))
       .range([0, innerHeight])
-      .paddingInner(0.4)
-      .paddingOuter(0.15);
+      .paddingInner(stacked ? 0.5 : 0.4)
+      .paddingOuter(stacked ? 0.05 : 0.15);
 
     const y1 = d3.scaleBand()
       .domain(["2024", "2025"])
@@ -248,10 +253,10 @@ function drawChart() {
       .enter()
       .append("text")
       .attr("class", "label")
-      .attr("x", -10)
-      .attr("y", d => y0(d.key) + y0.bandwidth() / 2)
-      .attr("text-anchor", "end")
-      .attr("dominant-baseline", "middle")
+      .attr("x", stacked ? 0 : -10)
+      .attr("y", d => stacked ? y0(d.key) - 5 : y0(d.key) + y0.bandwidth() / 2)
+      .attr("text-anchor", stacked ? "start" : "end")
+      .attr("dominant-baseline", stacked ? "auto" : "middle")
       .style("font-family", "Arial")
       .style("font-size", isMobile ? "11.5px" : "13.5px")
       .style("font-weight", "normal")
@@ -284,7 +289,7 @@ function drawChart() {
       .append("rect")
       .attr("class", "hit")
       .attr("x", -margin.left)
-      .attr("y", d => y0(d.key) - (y0.step() - y0.bandwidth()) / 2)
+      .attr("y", d => y0(d.key) - (y0.step() - y0.bandwidth()) / (stacked ? 1 : 2)) // stacked : couvre aussi le label au-dessus
       .attr("width", innerWidth + margin.left + margin.right)
       .attr("height", y0.step())
       .attr("fill", "transparent")

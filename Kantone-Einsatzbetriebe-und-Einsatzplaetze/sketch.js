@@ -317,8 +317,8 @@ function drawChart() {
       plaetze: +d["Einsatzplaetze"]
     }));
 
-    // Ordre décroissant par nombre de places d'affectation, comme EiB-pro-TB-miroir.
-    data.sort((a, b) => b.plaetze - a.plaetze);
+    // Cantons par ordre alphabétique de l'abréviation, comme dans le fichier Excel source.
+    data.sort((a, b) => a.canton.localeCompare(b.canton));
 
     const svg = d3.select("#chart")
       .append("svg")

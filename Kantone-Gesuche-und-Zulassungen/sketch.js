@@ -111,7 +111,7 @@ function wrapLines(svg, text, maxWidth, fontSize) {
 // Data
 // ============================================================
 
-// Tri decroissant selon la premiere colonne.
+// Cantons par ordre alphabetique de l'abreviation, comme dans le fichier Excel source.
 function parseData(raw) {
   return raw
     .map(d => {
@@ -119,7 +119,7 @@ function parseData(raw) {
       COLUMNS.forEach(c => { row[c.key] = +d[c.key]; });
       return row;
     })
-    .sort((a, b) => b[COLUMNS[0].key] - a[COLUMNS[0].key]);
+    .sort((a, b) => a.canton.localeCompare(b.canton));
 }
 
 // ============================================================

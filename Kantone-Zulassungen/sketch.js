@@ -64,11 +64,11 @@ window.addEventListener("resize", drawChart);
 // Data
 // ============================================================
 
-// Tri decroissant : le canton avec le plus d'admissions a gauche.
+// Cantons par ordre alphabetique de l'abreviation, comme dans le fichier Excel source.
 function parseData(raw) {
   return raw
     .map(d => ({ canton: d["Kanton"], value: +d["Zulassungen"] }))
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => a.canton.localeCompare(b.canton));
 }
 
 // Formatage suisse : 1'120

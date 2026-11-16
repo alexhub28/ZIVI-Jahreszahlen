@@ -3,7 +3,7 @@
 // ============================================================
 
 const titleLookup = {
-  de: "2025: Bestand pro Kanton"
+  de: "Anzahl Zivildienstpflichtige pro Kanton"
 };
 
 // Une colonne par statistique (split bars), dans l'ordre d'affichage.

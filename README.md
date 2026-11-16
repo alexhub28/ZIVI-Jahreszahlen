@@ -31,6 +31,10 @@ Die Grafiken sind mit D3.js (Version 7) programmiert, einer JavaScript-Bibliothe
 - [**Kurse pro Kursart (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse-pro-Kursart-pie-chart/) — Anzahl Kurse nach Kursart
 - [**Rechtsdienst (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst/) — Disziplinarentscheide pro Jahr
 - [**Rechtsdienst (stacked bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst-empile/) — Disziplinarentscheide pro Jahr, Art. 73/74 + Art. 76 gestapelt, Strafanzeigen und Strafbefehle separat
+- [**Zulassungen pro Kanton (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kantone-Zulassungen/) — Anzahl Zulassungen 2025 pro Kanton
+- [**Einsatzbetriebe und Einsatzplätze pro Kanton (mirror chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kantone-Einsatzbetriebe-und-Einsatzplaetze/) — Anzahl Einsatzbetriebe und Einsatzplätze 2025 pro Kanton
+- [**Bestand pro Kanton (split bars)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kantone-Bestand/) — Bestand total, ohne und mit Restdiensttagen, 2025 pro Kanton
+- [**Gesuche und Zulassungen pro Kanton (split bars)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kantone-Gesuche-und-Zulassungen/) — Gesuche und Zulassungen nach Zeitpunkt des Gesuchs (vor, während, nach RS), 2025 pro Kanton
 
 ## Quellen
 
@@ -71,6 +75,10 @@ Les graphiques sont codés avec D3.js (version 7), une bibliothèque JavaScript 
 - [**Kurse pro Kursart (pie chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kurse-pro-Kursart-pie-chart/) — Nombre de cours par genre de cours
 - [**Rechtsdienst (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst/) — Décisions disciplinaires par année
 - [**Rechtsdienst (stacked bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Rechtsdienst-empile/) — Décisions disciplinaires par année, art. 73/74 + art. 76 empilées, plaintes pénales et ordonnances pénales séparées
+- [**Zulassungen pro Kanton (bar chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kantone-Zulassungen/) — Nombre d'admissions 2025 par canton
+- [**Einsatzbetriebe und Einsatzplätze pro Kanton (mirror chart)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kantone-Einsatzbetriebe-und-Einsatzplaetze/) — Nombre d'établissements et de places d'affectation 2025 par canton
+- [**Bestand pro Kanton (split bars)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kantone-Bestand/) — Effectif total, sans et avec jours de service restants, 2025 par canton
+- [**Gesuche und Zulassungen pro Kanton (split bars)**](https://alexhub28.github.io/ZIVI-Jahreszahlen/Kantone-Gesuche-und-Zulassungen/) — Demandes et admissions selon le moment de la demande (avant, pendant, après l'ER), 2025 par canton
 
 ## Sources
 

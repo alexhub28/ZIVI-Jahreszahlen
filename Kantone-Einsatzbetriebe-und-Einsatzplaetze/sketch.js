@@ -42,6 +42,25 @@ const ROW_HEIGHT = { mobile: 11.5, desktop: 12.5 }; // compact : tout visible sa
 const FONT_SIZE = { mobile: 9.5, desktop: 10 };       // abreviations + valeurs
 const FONT_SIZE_HOVER = { mobile: 12.5, desktop: 13 }; // ligne survolee
 
+// Hauteur de ligne adaptee a la hauteur reelle de la fenetre (iframe
+// LivingDocs) : les lignes se resserrent (jusqu'a ROW_HEIGHT_MIN) pour que
+// le graphique entier reste visible sans scroll ; jamais plus grandes que
+// la valeur par defaut.
+const ROW_HEIGHT_MIN = 9;
+
+function fitRowHeight(defaultHeight, fixedHeight, rowCount) {
+  const chartTop = document.getElementById("chart").getBoundingClientRect().top + window.scrollY;
+  const available = window.innerHeight - chartTop - 12; // 6px de marge du body + ligne de base du svg + securite
+  const fitted = (available - fixedHeight) / rowCount;
+  return Math.max(ROW_HEIGHT_MIN, Math.min(defaultHeight, fitted));
+}
+
+// Polices reduites si les lignes sont tres serrees (sinon chevauchement).
+function fitFontSizes(sizes, rowHeight) {
+  const base = Math.min(sizes.base, Math.max(8, rowHeight * 0.85));
+  return { base, hover: sizes.hover * base / sizes.base };
+}
+
 const VALUE_GAP = 5;
 const MIN_BAR_WIDTH = 2;
 
@@ -346,7 +365,7 @@ function drawChart() {
   const containerWidth = document.getElementById("chart").clientWidth;
   const isMobile = containerWidth < MOBILE_BREAKPOINT;
   const device = isMobile ? "mobile" : "desktop";
-  const sizes = { base: FONT_SIZE[device], hover: FONT_SIZE_HOVER[device] };
+  let sizes = { base: FONT_SIZE[device], hover: FONT_SIZE_HOVER[device] };
 
   d3.csv(DATA_FILE).then(raw => {
     const data = raw.map(d => ({
@@ -386,7 +405,11 @@ function drawChart() {
     drawLegendItem(svg, legendStacked ? null : rightX + panelWidth / 2, legendStacked ? 22 : 4, BASE_PLAETZE, labels.plaetze, legendFont);
 
     const margin = { top: legendStacked ? 42 : 24, bottom: 4 };
-    const innerHeight = data.length * ROW_HEIGHT[device];
+    // Total : TOTAL_ROW_HEIGHT + 2 ; la place des valeurs reste mesuree a la
+    // taille par defaut (majorant), les polices ne pouvant que diminuer.
+    const rowHeight = fitRowHeight(ROW_HEIGHT[device], margin.top + margin.bottom + TOTAL_ROW_HEIGHT + 2, data.length);
+    sizes = fitFontSizes(sizes, rowHeight);
+    const innerHeight = data.length * rowHeight;
     svg.attr("height", margin.top + innerHeight + margin.bottom + TOTAL_ROW_HEIGHT + 2);
 
     const lengthScale = d3.scaleLinear().domain([0, maxValue]).range([0, panelWidth]);

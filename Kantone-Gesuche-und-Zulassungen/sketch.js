@@ -51,6 +51,25 @@ const HEADER_FONT_SIZE = { mobile: 10.5, desktop: 12 };
 const HEADER_FONT_MIN = 8.5;
 const COLUMN_GAP = { mobile: 8, desktop: 18 };
 
+// Hauteur de ligne adaptee a la hauteur reelle de la fenetre (iframe
+// LivingDocs) : les lignes se resserrent (jusqu'a ROW_HEIGHT_MIN) pour que
+// le graphique entier reste visible sans scroll ; jamais plus grandes que
+// la valeur par defaut.
+const ROW_HEIGHT_MIN = 9;
+
+function fitRowHeight(defaultHeight, fixedHeight, rowCount) {
+  const chartTop = document.getElementById("chart").getBoundingClientRect().top + window.scrollY;
+  const available = window.innerHeight - chartTop - 12; // 6px de marge du body + ligne de base du svg + securite
+  const fitted = (available - fixedHeight) / rowCount;
+  return Math.max(ROW_HEIGHT_MIN, Math.min(defaultHeight, fitted));
+}
+
+// Polices reduites si les lignes sont tres serrees (sinon chevauchement).
+function fitFontSizes(sizes, rowHeight) {
+  const base = Math.min(sizes.base, Math.max(8, rowHeight * 0.85));
+  return { base, hover: sizes.hover * base / sizes.base };
+}
+
 const VALUE_GAP = 4;
 const MIN_BAR_WIDTH = 2;
 
@@ -135,24 +154,28 @@ function parseData(raw) {
 // Colonne des cantons et place des valeurs mesurees a la taille de survol
 // (en gras) : la ligne survolee peut grandir sans jamais deborder.
 function computeLayout(svg, data, containerWidth, device) {
-  const sizes = { base: FONT_SIZE[device], hover: FONT_SIZE_HOVER[device] };
-  const labelWidth = Math.max(
-    d3.max(data, d => measureTextWidth(svg, d.canton, sizes.hover, true)),
-    measureTextWidth(svg, TOTAL_LABEL[currentLang], sizes.base, true)
-  ) + 8;
   const gap = COLUMN_GAP[device];
+  // Colonne des cantons mesuree d'abord a la taille par defaut (majorant :
+  // les polices ne peuvent que diminuer ensuite).
+  const defaultSizes = { base: FONT_SIZE[device], hover: FONT_SIZE_HOVER[device] };
+  const labelWidth = Math.max(
+    d3.max(data, d => measureTextWidth(svg, d.canton, defaultSizes.hover, true)),
+    measureTextWidth(svg, TOTAL_LABEL[currentLang], defaultSizes.base, true)
+  ) + 8;
   const columnWidth = (containerWidth - labelWidth - gap * (COLUMNS.length - 1)) / COLUMNS.length;
-
-  const maxByColumn = COLUMNS.map(c => d3.max(data, d => d[c.key]));
-  const valueWidth = measureTextWidth(svg, formatSwiss(d3.max(maxByColumn)), sizes.hover, true) + VALUE_GAP + 2;
-  const barSpace = Math.max(10, columnWidth - valueWidth);
 
   const headerFont = fitHeaderFont(svg, columnWidth, HEADER_FONT_SIZE[device]);
   const headerLines = COLUMNS.map(c => wrapLines(svg, c.label[currentLang], columnWidth, headerFont));
   const headerHeight = d3.max(headerLines, l => l.length) * headerFont * 1.2 + 8;
 
-  const rowHeight = ROW_HEIGHT[device];
+  // 26 cantons + la ligne de total.
+  const rowHeight = fitRowHeight(ROW_HEIGHT[device], headerHeight + TOTAL_ROW_GAP + 4, data.length + 1);
+  const sizes = fitFontSizes(defaultSizes, rowHeight);
   const innerHeight = data.length * rowHeight;
+
+  const maxByColumn = COLUMNS.map(c => d3.max(data, d => d[c.key]));
+  const valueWidth = measureTextWidth(svg, formatSwiss(d3.max(maxByColumn)), sizes.hover, true) + VALUE_GAP + 2;
+  const barSpace = Math.max(10, columnWidth - valueWidth);
 
   return {
     sizes, labelWidth, gap, columnWidth, barSpace, maxByColumn,

@@ -3,7 +3,7 @@
 // ============================================================
 
 const titleLookup = {
-  de: "Anzahl Zivildienstpflichtige pro Kanton"
+  de: "Anzahl Zivildienstpflichtige"
 };
 
 // Une colonne par statistique (split bars), dans l'ordre d'affichage.

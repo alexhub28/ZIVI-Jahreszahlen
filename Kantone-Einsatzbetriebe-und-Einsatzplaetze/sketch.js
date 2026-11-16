@@ -3,7 +3,7 @@
 // ============================================================
 
 const titleLookup = {
-  de: "2025: Einsatzbetriebe und Einsatzplätze pro Kanton"
+  de: "Einsatzbetriebe und Einsatzplätze"
 };
 
 const legendLookup = {

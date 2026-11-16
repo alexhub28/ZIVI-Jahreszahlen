@@ -26,6 +26,11 @@ const legendLookup = {
 const BASE_BETRIEBE = "#5A959D";  // accent1 — petrol
 const BASE_PLAETZE = "#A3A8CA";   // accent3 — lila
 
+// Ligne de total sous la derniere categorie (somme des domaines), sans
+// barre : une pastille de couleur indique la serie de chaque chiffre.
+const TOTAL_LABEL = { de: "Total", fr: "Total", it: "Totale" };
+const TOTAL_ROW_HEIGHT = 24;
+
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
 
@@ -294,7 +299,7 @@ function drawChart() {
     // Ordre décroissant par nombre de places d'affectation (Einsatzplätze)
     data.sort((a, b) => b.plaetze - a.plaetze);
 
-    const rowHeight = 42;
+    const rowHeight = 39; // 42 -> 39 pour faire place a la ligne de total sous 500px
     const legendHeight = 54; // légende sur une seule ligne par item (embed compact) — agrandie avec le texte
     const svg = d3.select("#chart")
       .append("svg")
@@ -314,7 +319,7 @@ function drawChart() {
 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = data.length * rowHeight;
-    const height = margin.top + innerHeight + margin.bottom;
+    const height = margin.top + innerHeight + TOTAL_ROW_HEIGHT + margin.bottom;
     svg.attr("height", height);
 
     drawLegend(svg, margin, isMobile);
@@ -349,5 +354,74 @@ function drawChart() {
     drawBars(g, data, series, x, y0, y1, isMobile);
     drawRowLabels(g, data, y0, isMobile, stacked);
     attachHover(g, data, y0, margin, innerWidth, isMobile, stacked);
+    drawTotals(g, data, series, innerHeight, margin, innerWidth, isMobile, stacked);
   });
+}
+
+// --- Ligne de total : trait gris, "Total" dans la colonne des labels (ou en
+// debut de ligne en mode stacked), puis les deux sommes avec leur pastille.
+// Agrandie au survol, comme les lignes de domaine.
+function drawTotals(g, data, series, innerHeight, margin, innerWidth, isMobile, stacked) {
+  const lineY = innerHeight + 2;
+  const textY = lineY + TOTAL_ROW_HEIGHT / 2;
+  const baseSize = isMobile ? VALUE_FONT_SIZE.mobile : VALUE_FONT_SIZE.desktop;
+  const hoverSize = isMobile ? VALUE_FONT_SIZE_HOVER.mobile : VALUE_FONT_SIZE_HOVER.desktop;
+  const totals = g.append("g").attr("class", "totals");
+
+  totals.append("line")
+    .attr("x1", -margin.left + 10)
+    .attr("x2", innerWidth)
+    .attr("y1", lineY)
+    .attr("y2", lineY)
+    .attr("stroke", "#b2b4b7")
+    .attr("stroke-width", 1);
+
+  const style = sel => sel
+    .attr("class", "total-text")
+    .attr("y", textY)
+    .attr("dominant-baseline", "middle")
+    .style("font-family", "Arial")
+    .style("font-size", baseSize)
+    .style("font-weight", "bold")
+    .style("fill", "#111")
+    .style("pointer-events", "none");
+
+  const label = totals.append("text").call(style)
+    .attr("x", stacked ? 0 : -10)
+    .attr("text-anchor", stacked ? "start" : "end")
+    .text(TOTAL_LABEL[currentLang]);
+
+  // Les sommes demarrent au debut des barres (apres "Total" en mode stacked) ;
+  // ecart calcule a la taille de survol pour que rien ne se chevauche.
+  let x = stacked ? label.node().getComputedTextLength() * parseFloat(hoverSize) / parseFloat(baseSize) + 12 : 0;
+  series.forEach(s => {
+    totals.append("rect")
+      .attr("x", x)
+      .attr("y", textY - 4)
+      .attr("width", 8)
+      .attr("height", 8)
+      .attr("fill", s.base);
+    const t = totals.append("text").call(style)
+      .attr("x", x + 12)
+      .text(formatSwiss(d3.sum(data, d => d[s.key])));
+    x += 12 + t.node().getComputedTextLength() * parseFloat(hoverSize) / parseFloat(baseSize) + 18;
+  });
+
+  g.append("rect")
+    .attr("class", "hit")
+    .attr("x", -margin.left)
+    .attr("y", lineY)
+    .attr("width", innerWidth + margin.left + margin.right)
+    .attr("height", TOTAL_ROW_HEIGHT)
+    .attr("fill", "transparent")
+    .style("cursor", "pointer")
+    .on("mouseover", () => {
+      highlight(g, null, isMobile, margin, innerWidth, stacked);
+      g.selectAll(".bar, .label, .value").transition().duration(150).style("opacity", 0.3);
+      totals.selectAll(".total-text").transition().duration(150).style("font-size", hoverSize);
+    })
+    .on("mouseout", () => {
+      highlight(g, null, isMobile, margin, innerWidth, stacked);
+      totals.selectAll(".total-text").transition().duration(150).style("font-size", baseSize);
+    });
 }

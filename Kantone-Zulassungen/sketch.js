@@ -12,7 +12,7 @@ const Y_AXIS_MAX = 1200;
 const Y_AXIS_TICKS = [0, 300, 600, 900, 1200];
 
 const titleLookup = {
-  de: "2025: Zulassungen pro Kanton"
+  de: "Zulassungen"
 };
 
 // Nom complet du canton, affiche dans l'infobulle (l'axe garde l'abreviation).

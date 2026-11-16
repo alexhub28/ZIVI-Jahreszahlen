@@ -53,6 +53,12 @@ const VALUE_GAP = 6;
 // gardee pour que les longueurs de barre restent comparables.
 const INDEPENDENT_SCALES = false;
 
+// Ligne de total sous l'axe (somme des domaines), sans barre : chaque somme
+// est collee a la colonne centrale, du cote de sa serie.
+const TOTAL_LABEL = { de: "Total", fr: "Total", it: "Totale" };
+const TOTAL_ROW_HEIGHT = 22;         // une ligne ("Total" entre les deux sommes)
+const TOTAL_ROW_HEIGHT_STACKED = 32; // stacked : "Total" au-dessus des sommes
+
 // Langue courante, determinee au demarrage depuis ?lang= (par defaut "de").
 let currentLang = "de";
 
@@ -426,7 +432,7 @@ function drawChart() {
     // — même tri que le graphique à barres groupées du même jeu de données.
     data.sort((a, b) => b.plaetze - a.plaetze);
 
-    const rowHeight = isMobile ? 42 : 48;
+    const rowHeight = isMobile ? 38 : 45; // reduit (42/48) pour faire place a la ligne de total sous 500px
 
     const svg = d3.select("#chart")
       .append("svg")
@@ -455,7 +461,8 @@ function drawChart() {
       bottom: 20 // graduations de l'axe (9.5px + tick) : 20px suffisent, tient sous 500px à 1000px
     };
     const innerHeight = data.length * rowHeight;
-    svg.attr("height", margin.top + innerHeight + margin.bottom);
+    const totalRowHeight = stacked ? TOTAL_ROW_HEIGHT_STACKED : TOTAL_ROW_HEIGHT;
+    svg.attr("height", margin.top + innerHeight + margin.bottom + totalRowHeight + 2);
 
     const maxBetriebe = d3.max(data, d => d.betriebe);
     const maxPlaetze = d3.max(data, d => d.plaetze);
@@ -503,5 +510,74 @@ function drawChart() {
 
     attachHover(svg, data, y0, leftX, panelWidth * 2 + centerLabelWidth, margin.top, isMobile,
       stacked ? containerWidth : centerLabelWidth, containerWidth, stacked);
+    drawTotals(svg, data, {
+      y: margin.top + innerHeight + margin.bottom,
+      height: totalRowHeight,
+      leftX, centerX, rightX, centerLabelWidth, panelWidth, containerWidth
+    }, isMobile, stacked);
   });
+}
+
+// --- Ligne de total : trait gris, "Total" au centre (au-dessus en mode
+// stacked), sommes en gras de part et d'autre. Agrandie au survol ; la marge
+// exterieure (outerValueMargin) laisse largement la place a la taille agrandie.
+function drawTotals(svg, data, pos, isMobile, stacked) {
+  const baseSize = isMobile ? VALUE_FONT_SIZE.mobile : VALUE_FONT_SIZE.desktop;
+  const hoverSize = isMobile ? VALUE_FONT_SIZE_HOVER.mobile : VALUE_FONT_SIZE_HOVER.desktop;
+  const midX = pos.centerX + pos.centerLabelWidth / 2;
+  const labelY = pos.y + (stacked ? 11 : pos.height / 2);
+  const valueY = pos.y + (stacked ? 24 : pos.height / 2);
+  const g = svg.append("g").attr("class", "totals");
+
+  g.append("line")
+    .attr("x1", pos.leftX)
+    .attr("x2", pos.rightX + pos.panelWidth)
+    .attr("y1", pos.y)
+    .attr("y2", pos.y)
+    .attr("stroke", "#b2b4b7")
+    .attr("stroke-width", 1);
+
+  const style = (sel, y) => sel
+    .attr("class", "total-text")
+    .attr("y", y)
+    .attr("dominant-baseline", "middle")
+    .style("font-family", "Arial")
+    .style("font-size", baseSize)
+    .style("font-weight", "bold")
+    .style("fill", "#111")
+    .style("pointer-events", "none");
+
+  g.append("text").call(style, labelY)
+    .attr("x", midX)
+    .attr("text-anchor", "middle")
+    .text(TOTAL_LABEL[currentLang]);
+
+  // Hors mode stacked, les sommes s'ecartent du centre de la moitie de la
+  // colonne centrale (ou se trouve "Total").
+  const offset = stacked ? VALUE_GAP : pos.centerLabelWidth / 2 - 4;
+  g.append("text").call(style, valueY)
+    .attr("x", midX - offset)
+    .attr("text-anchor", "end")
+    .text(formatSwiss(d3.sum(data, d => d.betriebe)));
+  g.append("text").call(style, valueY)
+    .attr("x", midX + offset)
+    .attr("text-anchor", "start")
+    .text(formatSwiss(d3.sum(data, d => d.plaetze)));
+
+  svg.append("rect")
+    .attr("class", "hit")
+    .attr("x", 0)
+    .attr("y", pos.y)
+    .attr("width", pos.containerWidth)
+    .attr("height", pos.height)
+    .attr("fill", "transparent")
+    .style("cursor", "pointer")
+    .on("mouseover", () => {
+      svg.selectAll(".bar, .domain-label, .value").transition().duration(150).style("opacity", 0.3);
+      g.selectAll(".total-text").transition().duration(150).style("font-size", hoverSize);
+    })
+    .on("mouseout", () => {
+      svg.selectAll(".bar, .domain-label, .value").transition().duration(150).style("opacity", 1);
+      g.selectAll(".total-text").transition().duration(150).style("font-size", baseSize);
+    });
 }

@@ -28,6 +28,11 @@ const CANTON_NAMES = {
 const BASE_BETRIEBE = "#5A959D";
 const BASE_PLAETZE = "#A3A8CA";
 
+// Ligne de total sous l'axe (somme calculee sur les cantons).
+const TOTAL_LABEL = { de: "Total" };
+const TOTAL_KEY = "__total"; // datum de la ligne de total (survol)
+const TOTAL_ROW_HEIGHT = 20;
+
 const DATA_FILE = "ABI_Einsatzbetriebe_und_Einsatzplaetze_pro_Kanton_2025.csv";
 const MOBILE_BREAKPOINT = 600;
 
@@ -270,9 +275,9 @@ function highlight(svg, canton, sizes) {
   svg.selectAll(".canton-label, .value")
     .transition().duration(150)
     .style("opacity", dim)
-    .style("font-weight", d => isRow(d) ? "bold" : "normal")
+    .style("font-weight", d => (isRow(d) || d.canton === TOTAL_KEY) ? "bold" : "normal")
     .style("font-size", d => (isRow(d) ? sizes.hover : sizes.base) + "px")
-    .style("fill", d => isRow(d) ? "#000" : "#333");
+    .style("fill", d => isRow(d) ? "#000" : (d.canton === TOTAL_KEY ? "#111" : "#333"));
 }
 
 function attachHover(svg, data, y, offsetX, offsetY, width, sizes, tip, containerWidth) {
@@ -296,6 +301,64 @@ function attachHover(svg, data, y, offsetX, offsetY, width, sizes, tip, containe
       highlight(svg, null, sizes);
       tip.tooltip.style("opacity", 0);
     });
+}
+
+// ============================================================
+// Total (sous l'axe) : "Total" au centre, chaque somme collee a la colonne
+// des cantons, sans barre (elle ecraserait l'echelle). Memes classes que
+// les lignes de cantons, pour s'agrandir aussi au survol.
+// ============================================================
+
+function drawTotals(svg, data, pos, sizes) {
+  const y = pos.y + TOTAL_ROW_HEIGHT / 2;
+  const g = svg.append("g").attr("class", "totals");
+
+  g.append("line")
+    .attr("x1", pos.leftX)
+    .attr("x2", pos.rightX + pos.panelWidth)
+    .attr("y1", pos.y)
+    .attr("y2", pos.y)
+    .attr("stroke", "#b2b4b7")
+    .attr("stroke-width", 1);
+
+  const style = sel => sel
+    .datum({ canton: TOTAL_KEY })
+    .attr("y", y)
+    .attr("dominant-baseline", "central")
+    .style("font-family", "Arial")
+    .style("font-size", sizes.base + "px")
+    .style("font-weight", "bold")
+    .style("fill", "#111")
+    .style("pointer-events", "none");
+
+  g.append("text").call(style)
+    .attr("class", "canton-label")
+    .attr("x", pos.centerX + pos.centerWidth / 2)
+    .attr("text-anchor", "middle")
+    .text(TOTAL_LABEL[currentLang]);
+
+  g.append("text").call(style)
+    .attr("class", "value")
+    .attr("x", pos.centerX - VALUE_GAP)
+    .attr("text-anchor", "end")
+    .text(formatSwiss(d3.sum(data, d => d.betriebe)));
+
+  g.append("text").call(style)
+    .attr("class", "value")
+    .attr("x", pos.rightX + VALUE_GAP)
+    .attr("text-anchor", "start")
+    .text(formatSwiss(d3.sum(data, d => d.plaetze)));
+
+  svg.append("rect")
+    .attr("class", "hit")
+    .attr("x", 0)
+    .attr("y", pos.y)
+    .attr("width", pos.containerWidth)
+    .attr("height", TOTAL_ROW_HEIGHT)
+    .attr("fill", "transparent")
+    .style("cursor", "pointer")
+    .on("mouseover", () => highlight(svg, TOTAL_KEY, sizes))
+    .on("mouseout", () => highlight(svg, null, sizes));
 }
 
 // ============================================================
@@ -349,7 +412,7 @@ function drawChart() {
 
     const margin = { top: legendStacked ? 44 : 26, bottom: 20 };
     const innerHeight = data.length * ROW_HEIGHT[device];
-    svg.attr("height", margin.top + innerHeight + margin.bottom);
+    svg.attr("height", margin.top + innerHeight + margin.bottom + TOTAL_ROW_HEIGHT + 2);
 
     const lengthScale = d3.scaleLinear().domain([0, maxValue]).range([0, panelWidth]);
     const leftAxisScale = lengthScale.copy().range([panelWidth, 0]);
@@ -372,5 +435,9 @@ function drawChart() {
 
     const tip = createTooltip(svg);
     attachHover(svg, data, y, 0, margin.top, containerWidth, sizes, tip, containerWidth);
+    drawTotals(svg, data, {
+      y: margin.top + innerHeight + margin.bottom,
+      leftX, centerX, rightX, centerWidth, panelWidth, containerWidth
+    }, sizes);
   });
 }

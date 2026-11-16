@@ -14,6 +14,12 @@ const COLUMNS = [
   { key: "Bestand_mit_Restdiensttagen", color: "#CAE7EA", label: { de: "Bestand mit Restdiensttagen" } }
 ];
 
+// Ligne de total en bas de chaque colonne (somme calculee sur les cantons :
+// la ligne "Total" du fichier Excel source est fausse pour certaines colonnes).
+const TOTAL_LABEL = { de: "Total" };
+const TOTAL_KEY = "__total"; // datum de la ligne de total (survol)
+const TOTAL_ROW_GAP = 6; // espace entre le dernier canton et le trait du total
+
 const DATA_FILE = "BEZ_Bestand_pro_Kanton_2025.csv";
 
 // Nom complet du canton, affiche dans l'infobulle (la colonne de gauche
@@ -129,7 +135,10 @@ function parseData(raw) {
 // (en gras) : la ligne survolee peut grandir sans jamais deborder.
 function computeLayout(svg, data, containerWidth, device) {
   const sizes = { base: FONT_SIZE[device], hover: FONT_SIZE_HOVER[device] };
-  const labelWidth = d3.max(data, d => measureTextWidth(svg, d.canton, sizes.hover, true)) + 8;
+  const labelWidth = Math.max(
+    d3.max(data, d => measureTextWidth(svg, d.canton, sizes.hover, true)),
+    measureTextWidth(svg, TOTAL_LABEL[currentLang], sizes.base, true)
+  ) + 8;
   const gap = COLUMN_GAP[device];
   const columnWidth = (containerWidth - labelWidth - gap * (COLUMNS.length - 1)) / COLUMNS.length;
 
@@ -147,7 +156,8 @@ function computeLayout(svg, data, containerWidth, device) {
   return {
     sizes, labelWidth, gap, columnWidth, barSpace, maxByColumn,
     headerFont, headerLines, headerHeight, innerHeight,
-    height: headerHeight + innerHeight + 4
+    rowHeight,
+    height: headerHeight + innerHeight + rowHeight + TOTAL_ROW_GAP + 4
   };
 }
 
@@ -260,6 +270,43 @@ function drawColumn(g, data, y, layout, column, i) {
     });
 }
 
+// Trait fin puis total de chaque colonne en gras, sans barre (elle
+// ecraserait l'echelle des cantons).
+function drawTotals(g, data, layout) {
+  const lineY = layout.innerHeight + TOTAL_ROW_GAP / 2;
+  const textY = layout.innerHeight + TOTAL_ROW_GAP + layout.rowHeight / 2;
+  const totals = g.append("g").attr("class", "totals");
+
+  totals.append("line")
+    .attr("x1", 0)
+    .attr("x2", columnX(layout, COLUMNS.length - 1) + layout.columnWidth)
+    .attr("y1", lineY)
+    .attr("y2", lineY)
+    .attr("stroke", "#b2b4b7")
+    .attr("stroke-width", 1);
+
+  const style = sel => sel
+    .attr("y", textY)
+    .attr("dominant-baseline", "central")
+    .style("font-family", "Arial")
+    .style("font-size", layout.sizes.base + "px")
+    .style("font-weight", "bold")
+    .style("fill", "#111");
+
+  // Memes classes que les lignes de cantons : le total s'agrandit aussi au survol.
+  totals.append("text").datum({ canton: TOTAL_KEY })
+    .attr("class", "canton-label")
+    .attr("x", 0).call(style).text(TOTAL_LABEL[currentLang]);
+
+  COLUMNS.forEach((c, i) => {
+    totals.append("text").datum({ canton: TOTAL_KEY })
+      .attr("class", "value")
+      .attr("x", columnX(layout, i))
+      .call(style)
+      .text(formatSwiss(d3.sum(data, d => d[c.key])));
+  });
+}
+
 // ============================================================
 // Survol : ligne mise en evidence dans toutes les colonnes (valeurs
 // agrandies) + infobulle avec le nom complet du canton
@@ -314,9 +361,9 @@ function highlight(svg, canton, sizes) {
   svg.selectAll(".canton-label, .value")
     .transition().duration(150)
     .style("opacity", dim)
-    .style("font-weight", d => isRow(d) ? "bold" : "normal")
+    .style("font-weight", d => (isRow(d) || d.canton === TOTAL_KEY) ? "bold" : "normal")
     .style("font-size", d => (isRow(d) ? sizes.hover : sizes.base) + "px")
-    .style("fill", d => isRow(d) ? "#000" : "#333");
+    .style("fill", d => isRow(d) ? "#000" : (d.canton === TOTAL_KEY ? "#111" : "#333"));
 }
 
 function attachHover(svg, data, y, offsetY, sizes, tip, containerWidth) {
@@ -340,6 +387,20 @@ function attachHover(svg, data, y, offsetY, sizes, tip, containerWidth) {
       highlight(svg, null, sizes);
       tip.tooltip.style("opacity", 0);
     });
+}
+
+// Ligne de total : agrandie au survol, sans infobulle.
+function attachTotalHover(svg, layout, offsetY, containerWidth) {
+  svg.append("rect")
+    .attr("class", "hit")
+    .attr("x", 0)
+    .attr("y", offsetY + layout.innerHeight + TOTAL_ROW_GAP / 2)
+    .attr("width", containerWidth)
+    .attr("height", layout.rowHeight + TOTAL_ROW_GAP / 2)
+    .attr("fill", "transparent")
+    .style("cursor", "pointer")
+    .on("mouseover", () => highlight(svg, TOTAL_KEY, layout.sizes))
+    .on("mouseout", () => highlight(svg, null, layout.sizes));
 }
 
 // ============================================================
@@ -373,8 +434,10 @@ function drawChart() {
     const g = svg.append("g").attr("transform", `translate(0, ${layout.headerHeight})`);
     drawCantonLabels(g, data, y, layout);
     COLUMNS.forEach((column, i) => drawColumn(g, data, y, layout, column, i));
+    drawTotals(g, data, layout);
 
     const tip = createTooltip(svg);
     attachHover(svg, data, y, layout.headerHeight, layout.sizes, tip, containerWidth);
+    attachTotalHover(svg, layout, layout.headerHeight, containerWidth);
   });
 }

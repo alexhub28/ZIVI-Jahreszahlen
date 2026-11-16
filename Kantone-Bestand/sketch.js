@@ -18,7 +18,7 @@ const COLUMNS = [
 // la ligne "Total" du fichier Excel source est fausse pour certaines colonnes).
 const TOTAL_LABEL = { de: "Total" };
 const TOTAL_KEY = "__total"; // datum de la ligne de total (survol)
-const TOTAL_ROW_GAP = 6; // espace entre le dernier canton et le trait du total
+const TOTAL_ROW_GAP = 4; // espace entre le dernier canton et le trait du total
 
 const DATA_FILE = "BEZ_Bestand_pro_Kanton_2025.csv";
 
@@ -43,7 +43,7 @@ const SHARED_SCALE = true;
 const MOBILE_BREAKPOINT = 600;
 
 // 26 cantons dans le cadre LivingDocs de 500px : lignes compactes.
-const ROW_HEIGHT = { mobile: 13.5, desktop: 14.5 };
+const ROW_HEIGHT = { mobile: 11.5, desktop: 12.5 }; // compact : tout visible sans scroll dans l'iframe LivingDocs
 const FONT_SIZE = { mobile: 9.5, desktop: 10.5 };       // cantons + valeurs
 const FONT_SIZE_HOVER = { mobile: 11.5, desktop: 13.5 }; // ligne survolee
 const HEADER_FONT_SIZE = { mobile: 10.5, desktop: 12 };

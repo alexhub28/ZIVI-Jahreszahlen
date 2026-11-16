@@ -31,13 +31,13 @@ const BASE_PLAETZE = "#A3A8CA";
 // Ligne de total sous l'axe (somme calculee sur les cantons).
 const TOTAL_LABEL = { de: "Total" };
 const TOTAL_KEY = "__total"; // datum de la ligne de total (survol)
-const TOTAL_ROW_HEIGHT = 20;
+const TOTAL_ROW_HEIGHT = 18;
 
 const DATA_FILE = "ABI_Einsatzbetriebe_und_Einsatzplaetze_pro_Kanton_2025.csv";
 const MOBILE_BREAKPOINT = 600;
 
 // 26 cantons dans le cadre LivingDocs de 500px : lignes compactes.
-const ROW_HEIGHT = { mobile: 13.5, desktop: 14 };
+const ROW_HEIGHT = { mobile: 11.5, desktop: 12.5 }; // compact : tout visible sans scroll dans l'iframe LivingDocs
 
 const FONT_SIZE = { mobile: 9.5, desktop: 10 };       // abreviations + valeurs
 const FONT_SIZE_HOVER = { mobile: 12.5, desktop: 13 }; // ligne survolee
@@ -169,31 +169,6 @@ function drawSideBars(g, data, y, lengthScale, panelWidth, color, key, side, fon
       const iVal = d3.interpolateNumber(0, d[key]);
       return t => formatSwiss(iVal(t));
     });
-}
-
-// ============================================================
-// Axe (miroir) — même échelle des deux côtés
-// ============================================================
-
-function drawSideAxis(g, scale, panelWidth, innerHeight, isMobile) {
-  const tickCount = panelWidth < 110 ? 2 : (isMobile ? 3 : 4);
-  const ticks = scale.ticks(tickCount).filter(v => {
-    const x = scale(v);
-    return x >= -0.5 && x <= panelWidth + 0.5;
-  });
-
-  g.append("g")
-    .attr("transform", `translate(0, ${innerHeight})`)
-    .call(
-      d3.axisBottom(scale)
-        .tickValues(ticks)
-        .tickFormat(d => formatSwiss(d))
-        .tickSizeOuter(0)
-    )
-    .selectAll("text")
-    .style("font-family", "Arial")
-    .style("font-size", "9px")
-    .style("fill", "#555");
 }
 
 // ============================================================
@@ -410,12 +385,11 @@ function drawChart() {
     drawLegendItem(svg, legendStacked ? null : leftX + panelWidth / 2, 4, BASE_BETRIEBE, labels.betriebe, legendFont);
     drawLegendItem(svg, legendStacked ? null : rightX + panelWidth / 2, legendStacked ? 22 : 4, BASE_PLAETZE, labels.plaetze, legendFont);
 
-    const margin = { top: legendStacked ? 44 : 26, bottom: 20 };
+    const margin = { top: legendStacked ? 42 : 24, bottom: 4 };
     const innerHeight = data.length * ROW_HEIGHT[device];
     svg.attr("height", margin.top + innerHeight + margin.bottom + TOTAL_ROW_HEIGHT + 2);
 
     const lengthScale = d3.scaleLinear().domain([0, maxValue]).range([0, panelWidth]);
-    const leftAxisScale = lengthScale.copy().range([panelWidth, 0]);
 
     const y = d3.scaleBand()
       .domain(data.map(d => d.canton))
@@ -429,8 +403,8 @@ function drawChart() {
 
     drawSideBars(gLeft, data, y, lengthScale, panelWidth, BASE_BETRIEBE, "betriebe", "left", sizes.base);
     drawSideBars(gRight, data, y, lengthScale, panelWidth, BASE_PLAETZE, "plaetze", "right", sizes.base);
-    drawSideAxis(gLeft, leftAxisScale, panelWidth, innerHeight, isMobile);
-    drawSideAxis(gRight, lengthScale, panelWidth, innerHeight, isMobile);
+    // Pas d'axe gradue : chaque barre porte sa valeur, et sa place (20px)
+    // sert a garder le graphique entier visible sans scroll.
     drawCenterLabels(gCenter, data, y, centerWidth, sizes.base);
 
     const tip = createTooltip(svg);

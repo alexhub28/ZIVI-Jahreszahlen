@@ -39,6 +39,16 @@ const COLOR_2024 = "#5A959D"; // accent1 — petrol
 const COLOR_2025 = "#A3A8CA"; // accent3 — lila
 
 // --- Formatage suisse : 3'997 ---
+
+// Hauteur de ligne entre la valeur par defaut et maxHeight, pour que le
+// graphique occupe toute la hauteur de la fenetre (iframe) sans la depasser.
+function fitRowHeight(defaultHeight, maxHeight, fixedHeight, rowCount) {
+  const chartTop = document.getElementById("chart").getBoundingClientRect().top + window.scrollY;
+  const available = window.innerHeight - chartTop - 12; // marge du body + ligne de base du svg
+  const fitted = (available - fixedHeight) / rowCount;
+  return Math.max(defaultHeight, Math.min(maxHeight, fitted));
+}
+
 function formatSwiss(n) {
   return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
 }
@@ -126,7 +136,7 @@ function drawChart() {
     svgProbe.remove();
 
     const legendHeight = 40;
-    const rowHeight = isMobile ? 68 : 84;
+    const defaultRowHeight = isMobile ? 68 : 84;
     const marginRight = isMobile ? 70 : 100;
     // Écran étroit : si la colonne de labels laisserait moins de 160px aux
     // barres, chaque catégorie passe au-dessus de sa paire de barres.
@@ -138,6 +148,14 @@ function drawChart() {
       bottom: 10,
       left: stacked ? 10 : normalLeft
     };
+
+    // Les lignes s'agrandissent pour remplir la hauteur reelle de l'iframe
+    // (cadre LivingDocs fixe a 500px) au lieu de laisser un grand blanc en bas.
+    const rowHeight = fitRowHeight(defaultRowHeight, isMobile ? 120 : 130, margin.top + margin.bottom, data.length);
+    // Barres pas plus epaisses que MAX_BAND : l'espace en plus va entre les groupes.
+    const maxBand = isMobile ? 56 : 64;
+    const basePaddingInner = stacked ? 0.5 : 0.4;
+    const paddingInner = Math.max(basePaddingInner, 1 - maxBand / rowHeight);
 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = data.length * rowHeight;
@@ -179,8 +197,8 @@ function drawChart() {
     const y0 = d3.scaleBand()
       .domain(data.map(d => d.key))
       .range([0, innerHeight])
-      .paddingInner(stacked ? 0.5 : 0.4)
-      .paddingOuter(stacked ? 0.05 : 0.15);
+      .paddingInner(paddingInner)
+      .paddingOuter(stacked ? 0.05 : Math.min(0.15, paddingInner / 2));
 
     const y1 = d3.scaleBand()
       .domain(["2024", "2025"])
